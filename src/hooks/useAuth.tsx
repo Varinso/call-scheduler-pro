@@ -9,6 +9,7 @@ interface AuthContextType {
   profile: { display_name: string; email: string | null } | null;
   roles: string[];
   isAdmin: boolean;
+  providerToken: string | null;
   signOut: () => Promise<void>;
 }
 
