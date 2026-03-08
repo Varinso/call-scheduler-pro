@@ -52,16 +52,11 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
-        extraParams: {
-          access_type: "offline",
-          prompt: "consent",
-          scope: "openid email profile https://www.googleapis.com/auth/calendar.readonly",
-        },
       });
-      if (error) {
-        toast({ title: "Error", description: String(error), variant: "destructive" });
+      if (result?.error) {
+        toast({ title: "Error", description: String(result.error), variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Error", description: String(err), variant: "destructive" });
