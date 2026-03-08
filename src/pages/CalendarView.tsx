@@ -1,44 +1,114 @@
-import { useState } from "react";
-import { format, isSameDay } from "date-fns";
-import { Pencil, XCircle } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useMemo } from "react";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  addMonths,
+  subMonths,
+  addWeeks,
+  subWeeks,
+  addDays,
+  subDays,
+  isSameDay,
+  isSameMonth,
+  isToday,
+  setHours,
+  setMinutes,
+} from "date-fns";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  LayoutGrid,
+  Clock,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { useMeetings } from "@/hooks/useMeetings";
 import { QuickScheduleForm } from "@/components/QuickScheduleForm";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { MeetingDetailDialog } from "@/components/MeetingDetailDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 
 type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+type CalendarViewType = "month" | "week" | "day";
 
 const statusColors: Record<string, string> = {
-  scheduled: "bg-primary/10 text-primary border-primary/20",
-  completed: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+  scheduled: "bg-primary/15 text-primary border-primary/30",
+  completed: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+  cancelled: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
+const statusDotColors: Record<string, string> = {
+  scheduled: "bg-primary",
+  completed: "bg-emerald-500",
+  cancelled: "bg-destructive",
+};
+
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 7); // 7am to 7pm
+
 export default function CalendarView() {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [activeTab, setActiveTab] = useState("meetings");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<CalendarViewType>("month");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedTime, setSelectedTime] = useState<string | undefined>();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
   const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
+
   const { data: meetings, isLoading, updateStatus } = useMeetings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const meetingDates = meetings?.map((m) => new Date(m.meeting_date)) ?? [];
-  const selectedMeetings = meetings?.filter(
-    (m) => selectedDate && isSameDay(new Date(m.meeting_date), selectedDate)
-  );
+  // Navigation
+  const navigate = (dir: 1 | -1) => {
+    if (view === "month") setCurrentDate(dir === 1 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+    else if (view === "week") setCurrentDate(dir === 1 ? addWeeks(currentDate, 1) : subWeeks(currentDate, 1));
+    else setCurrentDate(dir === 1 ? addDays(currentDate, 1) : subDays(currentDate, 1));
+  };
+
+  const goToday = () => setCurrentDate(new Date());
+
+  const title = useMemo(() => {
+    if (view === "month") return format(currentDate, "MMMM yyyy");
+    if (view === "week") {
+      const ws = startOfWeek(currentDate, { weekStartsOn: 0 });
+      const we = endOfWeek(currentDate, { weekStartsOn: 0 });
+      return `${format(ws, "MMM d")} – ${format(we, "MMM d, yyyy")}`;
+    }
+    return format(currentDate, "EEEE, MMMM d, yyyy");
+  }, [currentDate, view]);
+
+  // Meetings on a specific day
+  const meetingsOnDay = (day: Date) =>
+    meetings?.filter((m) => isSameDay(new Date(m.meeting_date), day)) ?? [];
+
+  // Meetings in a specific hour on a day
+  const meetingsInHour = (day: Date, hour: number) =>
+    meetings?.filter((m) => {
+      const d = new Date(m.meeting_date);
+      return isSameDay(d, day) && d.getHours() === hour;
+    }) ?? [];
+
+  const openScheduleSheet = (date: Date, time?: string) => {
+    setSelectedDate(date);
+    setSelectedTime(time);
+    setSheetOpen(true);
+  };
 
   const handleScheduleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["meetings"] });
-    setActiveTab("meetings");
+    setSheetOpen(false);
+    toast({ title: "Meeting scheduled!" });
   };
 
   const handleCancel = (id: string) => {
@@ -51,100 +121,363 @@ export default function CalendarView() {
     );
   };
 
+  // Month view days
+  const monthDays = useMemo(() => {
+    const ms = startOfMonth(currentDate);
+    const me = endOfMonth(currentDate);
+    const calStart = startOfWeek(ms, { weekStartsOn: 0 });
+    const calEnd = endOfWeek(me, { weekStartsOn: 0 });
+    return eachDayOfInterval({ start: calStart, end: calEnd });
+  }, [currentDate]);
+
+  // Week view days
+  const weekDays = useMemo(() => {
+    const ws = startOfWeek(currentDate, { weekStartsOn: 0 });
+    const we = endOfWeek(currentDate, { weekStartsOn: 0 });
+    return eachDayOfInterval({ start: ws, end: we });
+  }, [currentDate]);
+
+  const viewButtons: { key: CalendarViewType; icon: React.ReactNode; label: string }[] = [
+    { key: "month", icon: <LayoutGrid className="h-4 w-4" />, label: "Month" },
+    { key: "week", icon: <CalendarDays className="h-4 w-4" />, label: "Week" },
+    { key: "day", icon: <Clock className="h-4 w-4" />, label: "Day" },
+  ];
+
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground mt-1">View and schedule meetings</p>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Calendar</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">View and schedule meetings</p>
+        </div>
+        <Button onClick={() => openScheduleSheet(currentDate)} className="gap-2">
+          <Plus className="h-4 w-4" /> Schedule Meeting
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="border-border/50 shadow-sm">
-          <CardContent className="p-4">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="p-0 pointer-events-auto"
-              modifiers={{ hasMeeting: meetingDates }}
-              modifiersClassNames={{ hasMeeting: "bg-primary/20 font-bold" }}
+      {/* Navigation + View Switcher */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border/50 bg-card p-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={goToday} className="text-xs font-medium">
+            Today
+          </Button>
+          <h2 className="text-lg font-semibold ml-2">{title}</h2>
+        </div>
+        <div className="flex rounded-lg border border-border/50 p-0.5 bg-muted/50">
+          {viewButtons.map((v) => (
+            <Button
+              key={v.key}
+              variant={view === v.key ? "default" : "ghost"}
+              size="sm"
+              className={cn("gap-1.5 text-xs h-8", view !== v.key && "text-muted-foreground")}
+              onClick={() => setView(v.key)}
+            >
+              {v.icon}
+              {v.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Calendar Body */}
+      <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
+        {view === "month" && (
+          <MonthView
+            days={monthDays}
+            currentDate={currentDate}
+            meetingsOnDay={meetingsOnDay}
+            onDayClick={(d) => { setCurrentDate(d); setView("day"); }}
+            onScheduleClick={(d) => openScheduleSheet(d)}
+            onMeetingClick={setDetailMeeting}
+          />
+        )}
+        {view === "week" && (
+          <WeekView
+            days={weekDays}
+            meetingsInHour={meetingsInHour}
+            onSlotClick={(d, h) => openScheduleSheet(d, `${String(h).padStart(2, "0")}:00`)}
+            onMeetingClick={setDetailMeeting}
+          />
+        )}
+        {view === "day" && (
+          <DayView
+            day={currentDate}
+            meetingsInHour={meetingsInHour}
+            onSlotClick={(h) => openScheduleSheet(currentDate, `${String(h).padStart(2, "0")}:00`)}
+            onMeetingClick={setDetailMeeting}
+          />
+        )}
+      </div>
+
+      {/* Schedule Sheet */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Schedule Meeting</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <QuickScheduleForm
+              initialDate={selectedDate}
+              initialTime={selectedTime}
+              onSuccess={handleScheduleSuccess}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-        <Card className="lg:col-span-2 border-border/50 shadow-sm">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">
-                {selectedDate ? format(selectedDate, "EEEE, MMMM d, yyyy") : "Select a date"}
-              </CardTitle>
-            </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
-              <TabsList className="w-full">
-                <TabsTrigger value="meetings" className="flex-1">Meetings</TabsTrigger>
-                <TabsTrigger value="schedule" className="flex-1">+ Schedule</TabsTrigger>
-              </TabsList>
+      {/* Detail + Edit dialogs */}
+      <MeetingDetailDialog
+        meeting={detailMeeting}
+        open={!!detailMeeting}
+        onOpenChange={(open) => !open && setDetailMeeting(null)}
+        onEdit={(m) => { setDetailMeeting(null); setEditMeeting(m); }}
+        onCancel={(id) => { setDetailMeeting(null); handleCancel(id); }}
+      />
+      <EditMeetingDialog
+        meeting={editMeeting}
+        open={!!editMeeting}
+        onOpenChange={(open) => !open && setEditMeeting(null)}
+      />
+    </div>
+  );
+}
 
-              <TabsContent value="meetings">
-                {isLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
+/* ─── Month View ─── */
+function MonthView({
+  days,
+  currentDate,
+  meetingsOnDay,
+  onDayClick,
+  onScheduleClick,
+  onMeetingClick,
+}: {
+  days: Date[];
+  currentDate: Date;
+  meetingsOnDay: (d: Date) => Meeting[];
+  onDayClick: (d: Date) => void;
+  onScheduleClick: (d: Date) => void;
+  onMeetingClick: (m: Meeting) => void;
+}) {
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <div>
+      <div className="grid grid-cols-7 border-b border-border/50">
+        {weekdays.map((d) => (
+          <div key={d} className="py-2.5 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {days.map((day, i) => {
+          const dayMeetings = meetingsOnDay(day);
+          const inMonth = isSameMonth(day, currentDate);
+          const today = isToday(day);
+          return (
+            <div
+              key={i}
+              className={cn(
+                "min-h-[100px] border-b border-r border-border/30 p-1.5 transition-colors cursor-pointer group hover:bg-accent/30",
+                !inMonth && "bg-muted/30 opacity-50",
+              )}
+              onClick={() => onDayClick(day)}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span
+                  className={cn(
+                    "text-xs font-medium h-6 w-6 flex items-center justify-center rounded-full",
+                    today && "bg-primary text-primary-foreground",
+                    !today && inMonth && "text-foreground",
+                  )}
+                >
+                  {format(day, "d")}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => { e.stopPropagation(); onScheduleClick(day); }}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="space-y-0.5">
+                {dayMeetings.slice(0, 3).map((m) => (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "text-[10px] leading-tight px-1.5 py-0.5 rounded truncate cursor-pointer border",
+                      statusColors[m.status]
+                    )}
+                    onClick={(e) => { e.stopPropagation(); onMeetingClick(m); }}
+                  >
+                    {format(new Date(m.meeting_date), "h:mm")} {m.client_name}
                   </div>
-                ) : !selectedMeetings?.length ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">No meetings on this day</p>
-                ) : (
-                  <div className="space-y-3">
-                    {selectedMeetings.map((meeting) => (
-                      <div key={meeting.id} className="rounded-lg border border-border/50 p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium">{meeting.client_name}</h3>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={cn("text-xs", statusColors[meeting.status])}>
-                              {meeting.status}
-                            </Badge>
-                            {meeting.status === "scheduled" && (
-                              <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditMeeting(meeting)}>
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleCancel(meeting.id)}>
-                                  <XCircle className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                          <span>🕐 {format(new Date(meeting.meeting_date), "h:mm a")}</span>
-                          <span>🏢 {meeting.company_name || "—"}</span>
-                          <span>📧 {meeting.client_email}</span>
-                          <span>📞 {meeting.client_phone || "—"}</span>
-                        </div>
-                        {meeting.google_meet_link && (
-                          <a
-                            href={meeting.google_meet_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block text-sm text-primary hover:underline"
-                          >
-                            🎥 Join Google Meet
-                          </a>
-                        )}
-                      </div>
-                    ))}
+                ))}
+                {dayMeetings.length > 3 && (
+                  <div className="text-[10px] text-muted-foreground pl-1.5">
+                    +{dayMeetings.length - 3} more
                   </div>
                 )}
-              </TabsContent>
-
-              <TabsContent value="schedule">
-                <QuickScheduleForm initialDate={selectedDate} onSuccess={handleScheduleSuccess} />
-              </TabsContent>
-            </Tabs>
-          </CardHeader>
-        </Card>
+              </div>
+            </div>
+          );
+        })}
       </div>
-
-      <EditMeetingDialog meeting={editMeeting} open={!!editMeeting} onOpenChange={(open) => !open && setEditMeeting(null)} />
     </div>
+  );
+}
+
+/* ─── Week View ─── */
+function WeekView({
+  days,
+  meetingsInHour,
+  onSlotClick,
+  onMeetingClick,
+}: {
+  days: Date[];
+  meetingsInHour: (d: Date, h: number) => Meeting[];
+  onSlotClick: (d: Date, h: number) => void;
+  onMeetingClick: (m: Meeting) => void;
+}) {
+  return (
+    <ScrollArea className="h-[600px]">
+      <div className="min-w-[700px]">
+        {/* Day headers */}
+        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/50 sticky top-0 bg-card z-10">
+          <div className="border-r border-border/30" />
+          {days.map((d, i) => (
+            <div
+              key={i}
+              className={cn(
+                "py-3 text-center border-r border-border/30",
+                isToday(d) && "bg-primary/5"
+              )}
+            >
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{format(d, "EEE")}</div>
+              <div className={cn(
+                "text-lg font-semibold mt-0.5 h-8 w-8 mx-auto flex items-center justify-center rounded-full",
+                isToday(d) && "bg-primary text-primary-foreground"
+              )}>
+                {format(d, "d")}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Hour rows */}
+        {HOURS.map((hour) => (
+          <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/20">
+            <div className="text-[10px] text-muted-foreground text-right pr-2 pt-1 border-r border-border/30">
+              {format(setHours(setMinutes(new Date(), 0), hour), "h a")}
+            </div>
+            {days.map((day, di) => {
+              const slotMeetings = meetingsInHour(day, hour);
+              return (
+                <div
+                  key={di}
+                  className={cn(
+                    "min-h-[52px] border-r border-border/20 p-0.5 cursor-pointer hover:bg-accent/20 transition-colors relative group",
+                    isToday(day) && "bg-primary/[0.02]"
+                  )}
+                  onClick={() => onSlotClick(day, hour)}
+                >
+                  {slotMeetings.map((m) => (
+                    <div
+                      key={m.id}
+                      className={cn(
+                        "text-[10px] leading-tight px-1.5 py-1 rounded border mb-0.5 cursor-pointer hover:shadow-sm transition-shadow",
+                        statusColors[m.status]
+                      )}
+                      onClick={(e) => { e.stopPropagation(); onMeetingClick(m); }}
+                    >
+                      <div className="font-medium truncate">{m.client_name}</div>
+                      <div className="opacity-70">{format(new Date(m.meeting_date), "h:mm a")}</div>
+                    </div>
+                  ))}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <Plus className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
+
+/* ─── Day View ─── */
+function DayView({
+  day,
+  meetingsInHour,
+  onSlotClick,
+  onMeetingClick,
+}: {
+  day: Date;
+  meetingsInHour: (d: Date, h: number) => Meeting[];
+  onSlotClick: (h: number) => void;
+  onMeetingClick: (m: Meeting) => void;
+}) {
+  return (
+    <ScrollArea className="h-[600px]">
+      <div className="min-w-[300px]">
+        {HOURS.map((hour) => {
+          const slotMeetings = meetingsInHour(day, hour);
+          return (
+            <div
+              key={hour}
+              className="grid grid-cols-[70px_1fr] border-b border-border/20 cursor-pointer hover:bg-accent/20 transition-colors group"
+              onClick={() => onSlotClick(hour)}
+            >
+              <div className="text-xs text-muted-foreground text-right pr-3 pt-2 border-r border-border/30">
+                {format(setHours(setMinutes(new Date(), 0), hour), "h:00 a")}
+              </div>
+              <div className="min-h-[64px] p-1.5 relative">
+                {slotMeetings.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                      <Plus className="h-3 w-3" /> Add meeting
+                    </div>
+                  </div>
+                )}
+                {slotMeetings.map((m) => (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "px-3 py-2 rounded-lg border mb-1 cursor-pointer hover:shadow-md transition-shadow",
+                      statusColors[m.status]
+                    )}
+                    onClick={(e) => { e.stopPropagation(); onMeetingClick(m); }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{m.client_name}</span>
+                      <Badge variant="outline" className={cn("text-[10px] h-5", statusColors[m.status])}>
+                        {m.status}
+                      </Badge>
+                    </div>
+                    <div className="text-xs opacity-70 mt-0.5">
+                      {format(new Date(m.meeting_date), "h:mm a")}
+                      {m.company_name ? ` · ${m.company_name}` : ""}
+                    </div>
+                    {m.notes && (
+                      <div className="text-[10px] opacity-60 mt-1 line-clamp-1">{m.notes}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ScrollArea>
   );
 }

@@ -192,8 +192,8 @@ export default function MeetingsList() {
         meeting={detailMeeting}
         open={!!detailMeeting}
         onOpenChange={(open) => !open && setDetailMeeting(null)}
-        onEdit={() => {
-          setEditMeeting(detailMeeting);
+        onEdit={(m) => {
+          setEditMeeting(m);
           setDetailMeeting(null);
         }}
       />

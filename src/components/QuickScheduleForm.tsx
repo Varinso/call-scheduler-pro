@@ -9,20 +9,34 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 interface QuickScheduleFormProps {
   onSuccess?: () => void;
   initialDate?: Date;
+  initialTime?: string;
 }
 
-export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormProps) {
+// Generate 30-min slots from 7:00 AM to 8:00 PM
+const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
+  const totalMinutes = 7 * 60 + i * 30;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const hour12 = h % 12 || 12;
+  const ampm = h < 12 ? "AM" : "PM";
+  const label = `${hour12}:${String(m).padStart(2, "0")} ${ampm}`;
+  return { value, label };
+});
+
+export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: QuickScheduleFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>(initialDate);
-  const [time, setTime] = useState("10:00");
+  const [time, setTime] = useState(initialTime || "10:00");
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
@@ -35,6 +49,10 @@ export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormP
   useEffect(() => {
     if (initialDate) setDate(initialDate);
   }, [initialDate]);
+
+  useEffect(() => {
+    if (initialTime) setTime(initialTime);
+  }, [initialTime]);
 
   const updateField = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -130,25 +148,43 @@ export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormP
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Date *</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9", !date && "text-muted-foreground")}>
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                {date ? format(date, "PPP") : "Pick a date"}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium">Date *</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9", !date && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+              {date ? format(date, "PPP") : "Pick a date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={date} onSelect={setDate} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium">Time *</Label>
+        <ScrollArea className="h-[140px] rounded-lg border border-input bg-background p-1.5">
+          <div className="grid grid-cols-4 gap-1">
+            {TIME_SLOTS.map((slot) => (
+              <Button
+                key={slot.value}
+                type="button"
+                variant={time === slot.value ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-8 text-xs font-medium",
+                  time === slot.value && "shadow-sm",
+                  time !== slot.value && "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => setTime(slot.value)}
+              >
+                {slot.label}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={date} onSelect={setDate} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus className="p-3 pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="time" className="text-xs font-medium">Time *</Label>
-          <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-9" required />
-        </div>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
 
       <Button type="submit" className="w-full h-10 font-semibold" disabled={loading || !date}>
