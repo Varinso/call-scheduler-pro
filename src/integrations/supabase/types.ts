@@ -14,16 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          meeting_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          meeting_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          meeting_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          caller_id: string
+          client_email: string
+          client_name: string
+          client_phone: string
+          company_name: string
+          created_at: string
+          ghl_contact_data: Json | null
+          google_meet_link: string
+          id: string
+          meeting_date: string
+          notes: string | null
+          status: Database["public"]["Enums"]["meeting_status"]
+          updated_at: string
+        }
+        Insert: {
+          caller_id: string
+          client_email: string
+          client_name: string
+          client_phone?: string
+          company_name?: string
+          created_at?: string
+          ghl_contact_data?: Json | null
+          google_meet_link?: string
+          id?: string
+          meeting_date: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["meeting_status"]
+          updated_at?: string
+        }
+        Update: {
+          caller_id?: string
+          client_email?: string
+          client_name?: string
+          client_phone?: string
+          company_name?: string
+          created_at?: string
+          ghl_contact_data?: Json | null
+          google_meet_link?: string
+          id?: string
+          meeting_date?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["meeting_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          email: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "caller"
+      meeting_status: "scheduled" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +284,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "caller"],
+      meeting_status: ["scheduled", "completed", "cancelled"],
+    },
   },
 } as const
