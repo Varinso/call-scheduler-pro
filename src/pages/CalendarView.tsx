@@ -3,9 +3,12 @@ import { format, isSameDay } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMeetings } from "@/hooks/useMeetings";
+import { QuickScheduleForm } from "@/components/QuickScheduleForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
@@ -15,18 +18,25 @@ const statusColors: Record<string, string> = {
 
 export default function CalendarView() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [activeTab, setActiveTab] = useState("meetings");
   const { data: meetings, isLoading } = useMeetings();
+  const queryClient = useQueryClient();
 
   const meetingDates = meetings?.map((m) => new Date(m.meeting_date)) ?? [];
   const selectedMeetings = meetings?.filter(
     (m) => selectedDate && isSameDay(new Date(m.meeting_date), selectedDate)
   );
 
+  const handleScheduleSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    setActiveTab("meetings");
+  };
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground mt-1">View all scheduled meetings</p>
+        <p className="text-muted-foreground mt-1">View and schedule meetings</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -44,49 +54,62 @@ export default function CalendarView() {
         </Card>
 
         <Card className="lg:col-span-2 border-border/50 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {selectedDate ? format(selectedDate, "EEEE, MMMM d, yyyy") : "Select a date"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
-              </div>
-            ) : !selectedMeetings?.length ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No meetings on this day</p>
-            ) : (
-              <div className="space-y-3">
-                {selectedMeetings.map((meeting) => (
-                  <div key={meeting.id} className="rounded-lg border border-border/50 p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">{meeting.client_name}</h3>
-                      <Badge variant="outline" className={cn("text-xs", statusColors[meeting.status])}>
-                        {meeting.status}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                      <span>🕐 {format(new Date(meeting.meeting_date), "h:mm a")}</span>
-                      <span>🏢 {meeting.company_name || "—"}</span>
-                      <span>📧 {meeting.client_email}</span>
-                      <span>📞 {meeting.client_phone || "—"}</span>
-                    </div>
-                    {meeting.google_meet_link && (
-                      <a
-                        href={meeting.google_meet_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block text-sm text-primary hover:underline"
-                      >
-                        🎥 Join Google Meet
-                      </a>
-                    )}
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">
+                {selectedDate ? format(selectedDate, "EEEE, MMMM d, yyyy") : "Select a date"}
+              </CardTitle>
+            </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
+              <TabsList className="w-full">
+                <TabsTrigger value="meetings" className="flex-1">Meetings</TabsTrigger>
+                <TabsTrigger value="schedule" className="flex-1">+ Schedule</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="meetings">
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
+                ) : !selectedMeetings?.length ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">No meetings on this day</p>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedMeetings.map((meeting) => (
+                      <div key={meeting.id} className="rounded-lg border border-border/50 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium">{meeting.client_name}</h3>
+                          <Badge variant="outline" className={cn("text-xs", statusColors[meeting.status])}>
+                            {meeting.status}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                          <span>🕐 {format(new Date(meeting.meeting_date), "h:mm a")}</span>
+                          <span>🏢 {meeting.company_name || "—"}</span>
+                          <span>📧 {meeting.client_email}</span>
+                          <span>📞 {meeting.client_phone || "—"}</span>
+                        </div>
+                        {meeting.google_meet_link && (
+                          <a
+                            href={meeting.google_meet_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-sm text-primary hover:underline"
+                          >
+                            🎥 Join Google Meet
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="schedule">
+                <QuickScheduleForm initialDate={selectedDate} onSuccess={handleScheduleSuccess} />
+              </TabsContent>
+            </Tabs>
+          </CardHeader>
         </Card>
       </div>
     </div>

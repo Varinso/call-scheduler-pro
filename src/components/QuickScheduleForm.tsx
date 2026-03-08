@@ -13,13 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 
 interface QuickScheduleFormProps {
   onSuccess?: () => void;
+  initialDate?: Date;
 }
 
-export function QuickScheduleForm({ onSuccess }: QuickScheduleFormProps) {
+export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [date, setDate] = useState<Date>();
+  const [date, setDate] = useState<Date | undefined>(initialDate);
   const [time, setTime] = useState("10:00");
   const [form, setForm] = useState({
     client_name: "",
