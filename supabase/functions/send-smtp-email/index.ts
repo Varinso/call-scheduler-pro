@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,12 +33,11 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { meeting, email_type, caller_id: bodyCallerId } = body;
 
-    // Determine the user ID: either from JWT or from caller_id (service-role calls)
+    // Determine user ID: from JWT or from caller_id (service-role cron calls)
     let userId: string;
     if (user && !userError) {
       userId = user.id;
     } else if (bodyCallerId && token === supabaseKey) {
-      // Service-role call from reminder cron
       userId = bodyCallerId;
     } else {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
@@ -55,25 +53,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get the user's SMTP settings
+    // Get the user's email settings
     const { data: settings } = await supabase
       .from("integration_settings")
       .select("settings, enabled")
       .eq("user_id", userId)
-      .eq("integration_name", "smtp_email")
+      .eq("integration_name", "resend_email")
       .maybeSingle();
 
     if (!settings || !settings.enabled) {
       return new Response(
-        JSON.stringify({ error: "SMTP email not configured or disabled" }),
+        JSON.stringify({ error: "Email notifications not configured or disabled" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const smtp = settings.settings as Record<string, string>;
-    if (!smtp.host || !smtp.port || !smtp.username || !smtp.password || !smtp.from_email) {
+    const config = settings.settings as Record<string, string>;
+    if (!config.api_key || !config.from_email) {
       return new Response(
-        JSON.stringify({ error: "Incomplete SMTP configuration" }),
+        JSON.stringify({ error: "Incomplete email configuration (missing API key or from email)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -84,7 +82,7 @@ Deno.serve(async (req) => {
       .select("display_name")
       .eq("user_id", userId)
       .single();
-    const callerName = profile?.display_name || user.email || "CallMeet";
+    const callerName = profile?.display_name || "CallMeet";
 
     const meetingDate = new Date(meeting.meeting_date);
     const dateStr = meetingDate.toLocaleDateString("en-US", {
@@ -128,43 +126,38 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Connect and send via SMTP
-    const client = new SmtpClient();
-    const port = parseInt(smtp.port);
-    const useTls = port === 465;
-
-    if (useTls) {
-      await client.connectTLS({
-        hostname: smtp.host,
-        port,
-        username: smtp.username,
-        password: smtp.password,
-      });
-    } else {
-      await client.connect({
-        hostname: smtp.host,
-        port,
-        username: smtp.username,
-        password: smtp.password,
-      });
-    }
-
-    await client.send({
-      from: smtp.from_email,
-      to: meeting.client_email,
-      subject,
-      content: "text/html",
-      html: htmlBody,
+    // Send via Resend HTTP API
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${config.api_key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from_email,
+        to: [meeting.client_email],
+        subject,
+        html: htmlBody,
+      }),
     });
 
-    await client.close();
+    if (!resendResponse.ok) {
+      const errData = await resendResponse.text();
+      console.error("Resend API error:", errData);
+      return new Response(
+        JSON.stringify({ error: `Email send failed [${resendResponse.status}]: ${errData}` }),
+        { status: resendResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const resendData = await resendResponse.json();
 
     return new Response(
-      JSON.stringify({ success: true, to: meeting.client_email }),
+      JSON.stringify({ success: true, to: meeting.client_email, id: resendData.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("SMTP email error:", error);
+    console.error("Email error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
