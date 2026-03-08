@@ -18,12 +18,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Database } from "@/integrations/supabase/types";
-
-type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 interface EditMeetingDialogProps {
-  meeting: Meeting | null;
+  meeting: MeetingWithBooker | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

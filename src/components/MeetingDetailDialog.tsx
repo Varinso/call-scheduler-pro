@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Mail, Phone, Building2, Video, CalendarIcon, StickyNote, Clock, XCircle } from "lucide-react";
+import { Mail, Phone, Building2, Video, CalendarIcon, StickyNote, Clock, XCircle, UserCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,9 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import type { Database } from "@/integrations/supabase/types";
-
-type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
@@ -21,10 +19,10 @@ const statusColors: Record<string, string> = {
 };
 
 interface MeetingDetailDialogProps {
-  meeting: Meeting | null;
+  meeting: MeetingWithBooker | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit?: (meeting: Meeting) => void;
+  onEdit?: (meeting: MeetingWithBooker) => void;
   onCancel?: (id: string) => void;
 }
 
@@ -60,6 +58,7 @@ export function MeetingDetailDialog({ meeting, open, onOpenChange, onEdit, onCan
             <DetailRow icon={Building2} label="Company" value={meeting.company_name} />
             <DetailRow icon={CalendarIcon} label="Date" value={format(new Date(meeting.meeting_date), "MMM d, yyyy")} />
             <DetailRow icon={Clock} label="Time" value={format(new Date(meeting.meeting_date), "h:mm a")} />
+            <DetailRow icon={UserCircle} label="Booked by" value={meeting.booked_by || "Unknown"} />
             {meeting.google_meet_link && (
               <div className="flex items-start gap-3">
                 <Video className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />

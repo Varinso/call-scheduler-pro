@@ -32,9 +32,9 @@ import { MeetingDetailDialog } from "@/components/MeetingDetailDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import type { Database } from "@/integrations/supabase/types";
+import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
-type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+type Meeting = MeetingWithBooker;
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
@@ -113,7 +113,7 @@ export default function MeetingsList() {
                   <TableHead>Client</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Date & Time</TableHead>
-                  <TableHead>Notes</TableHead>
+                  <TableHead>Booked By</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
@@ -135,8 +135,8 @@ export default function MeetingsList() {
                     <TableCell className="text-sm">
                       {format(new Date(meeting.meeting_date), "MMM d, yyyy · h:mm a")}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px]">
-                      <span className="line-clamp-1">{meeting.notes || "—"}</span>
+                    <TableCell className="text-sm">
+                      <span className="text-muted-foreground">{meeting.booked_by || "Unknown"}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn("text-xs", statusColors[meeting.status])}>

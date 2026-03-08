@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
 
 type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+export type MeetingWithBooker = Meeting & { booked_by?: string };
 type MeetingStatus = Database["public"]["Enums"]["meeting_status"];
 
 export function useMeetings() {
@@ -13,12 +14,19 @@ export function useMeetings() {
   const query = useQuery({
     queryKey: ["meetings", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("meetings")
-        .select("*")
-        .order("meeting_date", { ascending: true });
-      if (error) throw error;
-      return data as Meeting[];
+      // Fetch meetings and profiles separately, then join in JS
+      const [meetingsRes, profilesRes] = await Promise.all([
+        supabase.from("meetings").select("*").order("meeting_date", { ascending: true }),
+        supabase.from("profiles").select("user_id, display_name"),
+      ]);
+      if (meetingsRes.error) throw meetingsRes.error;
+      const profileMap = new Map(
+        (profilesRes.data ?? []).map((p) => [p.user_id, p.display_name])
+      );
+      return (meetingsRes.data as Meeting[]).map((m) => ({
+        ...m,
+        booked_by: profileMap.get(m.caller_id) ?? "Unknown",
+      })) as MeetingWithBooker[];
     },
     enabled: !!user,
   });
