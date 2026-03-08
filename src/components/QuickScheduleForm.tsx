@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Video, User, Mail, Phone, Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
