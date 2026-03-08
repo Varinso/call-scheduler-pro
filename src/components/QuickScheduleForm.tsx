@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Video, User, Mail, Phone, Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,14 +13,21 @@ import { useToast } from "@/hooks/use-toast";
 
 interface QuickScheduleFormProps {
   onSuccess?: () => void;
+  initialDate?: Date;
 }
 
-export function QuickScheduleForm({ onSuccess }: QuickScheduleFormProps) {
+export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [date, setDate] = useState<Date>();
+  const [date, setDate] = useState<Date | undefined>(initialDate);
   const [time, setTime] = useState("10:00");
+
+  useEffect(() => {
+    if (initialDate) setDate(initialDate);
+  }, [initialDate]);
+
+
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
