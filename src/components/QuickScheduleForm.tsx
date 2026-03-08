@@ -28,6 +28,17 @@ export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormP
     if (initialDate) setDate(initialDate);
   }, [initialDate]);
 
+      <div className="space-y-1.5">
+        <Label htmlFor="notes" className="text-xs font-medium">Notes</Label>
+        <Textarea
+          id="notes"
+          placeholder="Additional notes about this meeting..."
+          value={form.notes}
+          onChange={(e) => updateField("notes", e.target.value)}
+          className="min-h-[60px] resize-none"
+          rows={2}
+        />
+      </div>
 
   const [form, setForm] = useState({
     client_name: "",
