@@ -1,15 +1,10 @@
-import { Settings, Webhook, Mail, Globe } from "lucide-react";
+import { Settings, Mail, Globe } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GoogleCalendarSync } from "@/components/GoogleCalendarSync";
+import { DiscordWebhookSettings } from "@/components/DiscordWebhookSettings";
 
 const integrations = [
-  {
-    title: "Discord Webhook",
-    description: "Post meeting details to a Discord channel automatically.",
-    icon: Webhook,
-    status: "Not configured",
-  },
   {
     title: "SMTP Email",
     description: "Send meeting confirmation and reminder emails to clients.",
@@ -33,8 +28,8 @@ export default function IntegrationSettings() {
       </div>
 
       <div className="space-y-4">
-        {/* Google Calendar Sync */}
         <GoogleCalendarSync />
+        <DiscordWebhookSettings />
 
         {integrations.map((item) => (
           <Card key={item.title} className="border-border/50 shadow-sm">
