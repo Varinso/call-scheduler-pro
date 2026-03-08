@@ -26,6 +26,7 @@ export default function IntegrationSettings() {
       <div className="space-y-4">
         <GoogleCalendarSync />
         <DiscordWebhookSettings />
+        <SlackWebhookSettings />
         <SmtpEmailSettings />
 
         {integrations.map((item) => (
