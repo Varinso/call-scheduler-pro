@@ -34,6 +34,7 @@ export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormP
     client_phone: "",
     company_name: "",
     google_meet_link: "",
+    notes: "",
   });
 
   const updateField = (field: string, value: string) =>
