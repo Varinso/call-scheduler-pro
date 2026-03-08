@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
 
 type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+export type MeetingWithBooker = Meeting & { booked_by?: string };
 type MeetingStatus = Database["public"]["Enums"]["meeting_status"];
 
 export function useMeetings() {
