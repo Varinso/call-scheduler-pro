@@ -113,6 +113,7 @@ export default function MeetingsList() {
                   <TableHead>Client</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Date & Time</TableHead>
+                  <TableHead>Notes</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
@@ -133,6 +134,9 @@ export default function MeetingsList() {
                     <TableCell className="text-sm">{meeting.company_name || "—"}</TableCell>
                     <TableCell className="text-sm">
                       {format(new Date(meeting.meeting_date), "MMM d, yyyy · h:mm a")}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px]">
+                      <span className="line-clamp-1">{meeting.notes || "—"}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn("text-xs", statusColors[meeting.status])}>
