@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Video, User, Mail, Phone, Building2, Loader2 } from "lucide-react";
+import { CalendarIcon, Video, User, Mail, Phone, Building2, Loader2, StickyNote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
