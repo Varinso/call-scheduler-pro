@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Search, MoreHorizontal, CheckCircle2, XCircle } from "lucide-react";
+import { Search, MoreHorizontal, CheckCircle2, XCircle, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +27,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMeetings } from "@/hooks/useMeetings";
+import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
+
+type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
@@ -40,6 +44,7 @@ const statusColors: Record<string, string> = {
 export default function MeetingsList() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
   const { data: meetings, isLoading, updateStatus } = useMeetings();
   const { toast } = useToast();
 
@@ -134,26 +139,36 @@ export default function MeetingsList() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {meeting.status === "scheduled" && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleStatusChange(meeting.id, "completed")}>
-                              <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Completed
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {meeting.status === "scheduled" && (
+                            <>
+                              <DropdownMenuItem onClick={() => setEditMeeting(meeting)}>
+                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(meeting.id, "completed")}>
+                                <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Completed
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(meeting.id, "cancelled")}
+                                className="text-destructive"
+                              >
+                                <XCircle className="mr-2 h-4 w-4" /> Cancel
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {meeting.status !== "scheduled" && (
+                            <DropdownMenuItem disabled className="text-muted-foreground">
+                              No actions available
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(meeting.id, "cancelled")}
-                              className="text-destructive"
-                            >
-                              <XCircle className="mr-2 h-4 w-4" /> Cancel
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -162,6 +177,8 @@ export default function MeetingsList() {
           )}
         </CardContent>
       </Card>
+
+      <EditMeetingDialog meeting={editMeeting} open={!!editMeeting} onOpenChange={(open) => !open && setEditMeeting(null)} />
     </div>
   );
 }

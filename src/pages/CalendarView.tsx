@@ -1,14 +1,21 @@
 import { useState } from "react";
 import { format, isSameDay } from "date-fns";
+import { Pencil, XCircle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMeetings } from "@/hooks/useMeetings";
 import { QuickScheduleForm } from "@/components/QuickScheduleForm";
+import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
+
+type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
@@ -19,8 +26,10 @@ const statusColors: Record<string, string> = {
 export default function CalendarView() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("meetings");
-  const { data: meetings, isLoading } = useMeetings();
+  const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
+  const { data: meetings, isLoading, updateStatus } = useMeetings();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const meetingDates = meetings?.map((m) => new Date(m.meeting_date)) ?? [];
   const selectedMeetings = meetings?.filter(
@@ -30,6 +39,16 @@ export default function CalendarView() {
   const handleScheduleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["meetings"] });
     setActiveTab("meetings");
+  };
+
+  const handleCancel = (id: string) => {
+    updateStatus.mutate(
+      { id, status: "cancelled" },
+      {
+        onSuccess: () => toast({ title: "Meeting cancelled" }),
+        onError: (err) => toast({ title: "Error", description: String(err), variant: "destructive" }),
+      }
+    );
   };
 
   return (
@@ -79,9 +98,21 @@ export default function CalendarView() {
                       <div key={meeting.id} className="rounded-lg border border-border/50 p-4 space-y-2">
                         <div className="flex items-center justify-between">
                           <h3 className="font-medium">{meeting.client_name}</h3>
-                          <Badge variant="outline" className={cn("text-xs", statusColors[meeting.status])}>
-                            {meeting.status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={cn("text-xs", statusColors[meeting.status])}>
+                              {meeting.status}
+                            </Badge>
+                            {meeting.status === "scheduled" && (
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditMeeting(meeting)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleCancel(meeting.id)}>
+                                  <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                           <span>🕐 {format(new Date(meeting.meeting_date), "h:mm a")}</span>
@@ -112,6 +143,8 @@ export default function CalendarView() {
           </CardHeader>
         </Card>
       </div>
+
+      <EditMeetingDialog meeting={editMeeting} open={!!editMeeting} onOpenChange={(open) => !open && setEditMeeting(null)} />
     </div>
   );
 }
