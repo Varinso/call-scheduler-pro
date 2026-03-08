@@ -99,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         roles,
         isAdmin: roles.includes("admin"),
+        providerToken,
         signOut,
       }}
     >

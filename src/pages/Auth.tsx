@@ -57,6 +57,7 @@ export default function Auth() {
         extraParams: {
           access_type: "offline",
           prompt: "consent",
+          scope: "openid email profile https://www.googleapis.com/auth/calendar.readonly",
         },
       });
       if (error) {

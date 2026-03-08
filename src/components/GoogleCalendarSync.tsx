@@ -17,31 +17,17 @@ export function GoogleCalendarSync() {
   } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { providerToken } = useAuth();
 
   const handleSync = async () => {
     setSyncing(true);
     setLastResult(null);
 
     try {
-      // Get the current session to check for provider token
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        toast({
-          title: "Not authenticated",
-          description: "Please sign in first.",
-          variant: "destructive",
-        });
-        setSyncing(false);
-        return;
-      }
-
-      const providerToken = session.provider_token;
-
       if (!providerToken) {
         toast({
           title: "Google not connected",
-          description: "Please sign in with Google to sync your calendar. Sign out and sign in again with Google.",
+          description: "Please sign out and sign back in with Google to connect your calendar.",
           variant: "destructive",
         });
         setSyncing(false);
