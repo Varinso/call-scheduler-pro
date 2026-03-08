@@ -71,7 +71,7 @@ export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormP
       });
 
       toast({ title: "Meeting scheduled!", description: `With ${form.client_name} at ${format(meetingDate, "PPp")}` });
-      setForm({ client_name: "", client_email: "", client_phone: "", company_name: "", google_meet_link: "" });
+      setForm({ client_name: "", client_email: "", client_phone: "", company_name: "", google_meet_link: "", notes: "" });
       setDate(undefined);
       setTime("10:00");
       onSuccess?.();
