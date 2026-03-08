@@ -18,8 +18,8 @@ export function SmtpEmailSettings() {
   const [testing, setTesting] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [form, setForm] = useState({
-    api_key: "",
-    from_email: "",
+    gmail_address: "",
+    app_password: "",
   });
 
   useEffect(() => {
@@ -32,14 +32,14 @@ export function SmtpEmailSettings() {
       .from("integration_settings")
       .select("settings, enabled")
       .eq("user_id", user!.id)
-      .eq("integration_name", "resend_email")
+      .eq("integration_name", "gmail_email")
       .maybeSingle();
 
     if (data) {
       const s = data.settings as Record<string, string>;
       setForm({
-        api_key: s?.api_key || "",
-        from_email: s?.from_email || "",
+        gmail_address: s?.gmail_address || "",
+        app_password: s?.app_password || "",
       });
       setEnabled(data.enabled);
     }
@@ -58,7 +58,7 @@ export function SmtpEmailSettings() {
       .upsert(
         {
           user_id: user.id,
-          integration_name: "resend_email",
+          integration_name: "gmail_email",
           settings: { ...form },
           enabled,
         },
@@ -69,7 +69,7 @@ export function SmtpEmailSettings() {
       toast({ title: "Error saving", description: error.message, variant: "destructive" });
     } else {
       toast({
-        title: "Email settings saved",
+        title: "Gmail settings saved",
         description: enabled ? "Email notifications are active." : "Settings saved but disabled.",
       });
     }
@@ -85,7 +85,7 @@ export function SmtpEmailSettings() {
         body: {
           meeting: {
             client_name: "Test Client",
-            client_email: form.from_email,
+            client_email: form.gmail_address,
             company_name: "Test Company",
             meeting_date: new Date().toISOString(),
             google_meet_link: "https://meet.google.com/test",
@@ -98,7 +98,7 @@ export function SmtpEmailSettings() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({ title: "Test email sent!", description: `Check ${form.from_email} for the test email.` });
+      toast({ title: "Test email sent!", description: `Check ${form.gmail_address} for the test email.` });
     } catch (err) {
       toast({
         title: "Test failed",
@@ -110,7 +110,7 @@ export function SmtpEmailSettings() {
     }
   }
 
-  const isConfigured = form.api_key && form.from_email;
+  const isConfigured = form.gmail_address && form.app_password;
 
   if (loading) {
     return (
@@ -131,9 +131,9 @@ export function SmtpEmailSettings() {
               <Mail className="h-5 w-5 text-accent-foreground" />
             </div>
             <div>
-              <CardTitle className="text-base">Email Notifications (Resend)</CardTitle>
+              <CardTitle className="text-base">Gmail Email Notifications</CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Send meeting confirmations and reminders to clients via Resend
+                Send meeting confirmations & reminders from your Gmail account
               </CardDescription>
             </div>
           </div>
@@ -150,41 +150,45 @@ export function SmtpEmailSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="resend-api-key" className="text-xs font-medium">Resend API Key</Label>
+          <Label htmlFor="gmail-address" className="text-xs font-medium">Gmail Address</Label>
           <Input
-            id="resend-api-key"
-            type="password"
-            placeholder="re_..."
-            value={form.api_key}
-            onChange={(e) => updateField("api_key", e.target.value)}
-            className="h-9 font-mono text-xs"
+            id="gmail-address"
+            type="email"
+            placeholder="you@gmail.com"
+            value={form.gmail_address}
+            onChange={(e) => updateField("gmail_address", e.target.value)}
+            className="h-9 text-xs"
           />
-          <p className="text-xs text-muted-foreground">
-            Get your API key from{" "}
-            <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline text-primary">
-              resend.com/api-keys
-            </a>
-          </p>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="resend-from" className="text-xs font-medium">From Email</Label>
+          <Label htmlFor="gmail-app-password" className="text-xs font-medium">App Password</Label>
           <Input
-            id="resend-from"
-            placeholder="CallMeet <noreply@yourdomain.com>"
-            value={form.from_email}
-            onChange={(e) => updateField("from_email", e.target.value)}
-            className="h-9 text-xs"
+            id="gmail-app-password"
+            type="password"
+            placeholder="xxxx xxxx xxxx xxxx"
+            value={form.app_password}
+            onChange={(e) => updateField("app_password", e.target.value)}
+            className="h-9 font-mono text-xs"
           />
           <p className="text-xs text-muted-foreground">
-            Use <code className="text-[10px] bg-muted px-1 rounded">onboarding@resend.dev</code> for testing, or your verified domain
+            Generate an App Password:{" "}
+            <a
+              href="https://myaccount.google.com/apppasswords"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-primary"
+            >
+              Google Account → App Passwords
+            </a>
+            . Requires 2FA enabled on your Google account.
           </p>
         </div>
 
         <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
           <div>
             <p className="text-sm font-medium">Enable email notifications</p>
-            <p className="text-xs text-muted-foreground">Send confirmations & reminders to clients</p>
+            <p className="text-xs text-muted-foreground">Send confirmations & reminders to clients from your Gmail</p>
           </div>
           <Switch checked={enabled} onCheckedChange={setEnabled} />
         </div>
