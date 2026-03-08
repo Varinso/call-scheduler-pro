@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
         .from("integration_settings")
         .select("settings, enabled")
         .eq("user_id", meeting.caller_id)
-        .eq("integration_name", "smtp_email")
+        .eq("integration_name", "resend_email")
         .maybeSingle();
 
       if (!settings || !settings.enabled) continue;
