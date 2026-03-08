@@ -31,15 +31,22 @@ Deno.serve(async (req) => {
       error: userError,
     } = await supabase.auth.getUser(token);
 
-    if (userError || !user) {
+    const body = await req.json();
+    const { meeting, email_type, caller_id: bodyCallerId } = body;
+
+    // Determine the user ID: either from JWT or from caller_id (service-role calls)
+    let userId: string;
+    if (user && !userError) {
+      userId = user.id;
+    } else if (bodyCallerId && token === supabaseKey) {
+      // Service-role call from reminder cron
+      userId = bodyCallerId;
+    } else {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const body = await req.json();
-    const { meeting, email_type } = body;
 
     if (!meeting) {
       return new Response(JSON.stringify({ error: "No meeting data provided" }), {
