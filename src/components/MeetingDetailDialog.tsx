@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Mail, Phone, Building2, Video, CalendarIcon, StickyNote, Clock, XCircle } from "lucide-react";
+import { Mail, Phone, Building2, Video, CalendarIcon, StickyNote, Clock, XCircle, UserCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,9 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import type { Database } from "@/integrations/supabase/types";
-
-type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
