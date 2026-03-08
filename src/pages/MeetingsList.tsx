@@ -113,6 +113,7 @@ export default function MeetingsList() {
                   <TableHead>Client</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Date & Time</TableHead>
+                  <TableHead>Notes</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
