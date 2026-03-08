@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Mail, Phone, Building2, Video, CalendarIcon, StickyNote, Clock } from "lucide-react";
+import { Mail, Phone, Building2, Video, CalendarIcon, StickyNote, Clock, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,10 +24,11 @@ interface MeetingDetailDialogProps {
   meeting: Meeting | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit?: () => void;
+  onEdit?: (meeting: Meeting) => void;
+  onCancel?: (id: string) => void;
 }
 
-export function MeetingDetailDialog({ meeting, open, onOpenChange, onEdit }: MeetingDetailDialogProps) {
+export function MeetingDetailDialog({ meeting, open, onOpenChange, onEdit, onCancel }: MeetingDetailDialogProps) {
   if (!meeting) return null;
 
   const DetailRow = ({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | null | undefined }) => (
@@ -89,10 +90,19 @@ export function MeetingDetailDialog({ meeting, open, onOpenChange, onEdit }: Mee
 
           <div className="flex justify-between items-center text-xs text-muted-foreground">
             <span>Created {format(new Date(meeting.created_at), "MMM d, yyyy")}</span>
-            {meeting.status === "scheduled" && onEdit && (
-              <Button size="sm" variant="outline" onClick={onEdit}>
-                Edit Meeting
-              </Button>
+            {meeting.status === "scheduled" && (
+              <div className="flex gap-2">
+                {onCancel && (
+                  <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => onCancel(meeting.id)}>
+                    <XCircle className="h-3.5 w-3.5 mr-1" /> Cancel
+                  </Button>
+                )}
+                {onEdit && (
+                  <Button size="sm" variant="outline" onClick={() => onEdit(meeting)}>
+                    Edit Meeting
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
