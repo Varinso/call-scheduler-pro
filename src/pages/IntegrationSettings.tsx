@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { GoogleCalendarSync } from "@/components/GoogleCalendarSync";
 import { DiscordWebhookSettings } from "@/components/DiscordWebhookSettings";
+import { SlackWebhookSettings } from "@/components/SlackWebhookSettings";
 import { SmtpEmailSettings } from "@/components/SmtpEmailSettings";
 
 const integrations = [
@@ -25,6 +26,7 @@ export default function IntegrationSettings() {
       <div className="space-y-4">
         <GoogleCalendarSync />
         <DiscordWebhookSettings />
+        <SlackWebhookSettings />
         <SmtpEmailSettings />
 
         {integrations.map((item) => (
