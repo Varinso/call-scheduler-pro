@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase
       .from("profiles")
       .select("display_name")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
     const callerName = profile?.display_name || user.email || "CallMeet";
 
