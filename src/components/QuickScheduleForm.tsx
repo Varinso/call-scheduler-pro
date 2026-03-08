@@ -56,6 +56,7 @@ export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormP
       client_phone: form.client_phone.trim(),
       company_name: form.company_name.trim(),
       google_meet_link: form.google_meet_link.trim(),
+      notes: form.notes.trim() || null,
       meeting_date: meetingDate.toISOString(),
     });
 
