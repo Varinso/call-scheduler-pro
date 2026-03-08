@@ -29,9 +29,6 @@ const mainNav = [
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Meetings", url: "/meetings", icon: List },
   { title: "Activity", url: "/activity", icon: Activity },
-];
-
-const adminNav = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
