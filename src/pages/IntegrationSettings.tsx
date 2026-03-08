@@ -1,6 +1,7 @@
 import { Settings, Webhook, Mail, Globe } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GoogleCalendarSync } from "@/components/GoogleCalendarSync";
 
 const integrations = [
   {
@@ -32,6 +33,9 @@ export default function IntegrationSettings() {
       </div>
 
       <div className="space-y-4">
+        {/* Google Calendar Sync */}
+        <GoogleCalendarSync />
+
         {integrations.map((item) => (
           <Card key={item.title} className="border-border/50 shadow-sm">
             <CardHeader className="pb-3">
