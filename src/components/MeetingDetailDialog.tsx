@@ -59,6 +59,7 @@ export function MeetingDetailDialog({ meeting, open, onOpenChange, onEdit, onCan
             <DetailRow icon={CalendarIcon} label="Date" value={format(new Date(meeting.meeting_date), "MMM d, yyyy")} />
             <DetailRow icon={Clock} label="Time" value={format(new Date(meeting.meeting_date), "h:mm a")} />
             <DetailRow icon={UserCircle} label="Booked by" value={meeting.booked_by || "Unknown"} />
+            {meeting.google_meet_link && (
               <div className="flex items-start gap-3">
                 <Video className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div>
