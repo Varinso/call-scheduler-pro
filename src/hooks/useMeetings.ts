@@ -14,22 +14,18 @@ export function useMeetings() {
   const query = useQuery({
     queryKey: ["meetings", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("meetings")
-        .select("*, profiles!meetings_caller_id_fkey(display_name)")
-        .order("meeting_date", { ascending: true });
-      if (error) {
-        // Fallback without join if FK doesn't exist
-        const { data: fallback, error: err2 } = await supabase
-          .from("meetings")
-          .select("*")
-          .order("meeting_date", { ascending: true });
-        if (err2) throw err2;
-        return fallback as MeetingWithBooker[];
-      }
-      return (data as any[]).map((m) => ({
+      // Fetch meetings and profiles separately, then join in JS
+      const [meetingsRes, profilesRes] = await Promise.all([
+        supabase.from("meetings").select("*").order("meeting_date", { ascending: true }),
+        supabase.from("profiles").select("user_id, display_name"),
+      ]);
+      if (meetingsRes.error) throw meetingsRes.error;
+      const profileMap = new Map(
+        (profilesRes.data ?? []).map((p) => [p.user_id, p.display_name])
+      );
+      return (meetingsRes.data as Meeting[]).map((m) => ({
         ...m,
-        booked_by: m.profiles?.display_name ?? "Unknown",
+        booked_by: profileMap.get(m.caller_id) ?? "Unknown",
       })) as MeetingWithBooker[];
     },
     enabled: !!user,
