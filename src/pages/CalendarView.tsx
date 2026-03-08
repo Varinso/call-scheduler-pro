@@ -37,9 +37,9 @@ import { EditMeetingDialog } from "@/components/EditMeetingDialog";
 import { MeetingDetailDialog } from "@/components/MeetingDetailDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { Database } from "@/integrations/supabase/types";
+import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
-type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+type Meeting = MeetingWithBooker;
 type CalendarViewType = "month" | "week" | "day";
 
 const statusColors: Record<string, string> = {
