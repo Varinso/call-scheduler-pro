@@ -467,6 +467,7 @@ function DayView({
                     <div className="text-xs opacity-70 mt-0.5">
                       {format(new Date(m.meeting_date), "h:mm a")}
                       {m.company_name ? ` · ${m.company_name}` : ""}
+                      {m.booked_by ? ` · by ${m.booked_by}` : ""}
                     </div>
                     {m.notes && (
                       <div className="text-[10px] opacity-60 mt-1 line-clamp-1">{m.notes}</div>
