@@ -28,8 +28,8 @@ export default function IntegrationSettings() {
       </div>
 
       <div className="space-y-4">
-        {/* Google Calendar Sync */}
         <GoogleCalendarSync />
+        <DiscordWebhookSettings />
 
         {integrations.map((item) => (
           <Card key={item.title} className="border-border/50 shadow-sm">
