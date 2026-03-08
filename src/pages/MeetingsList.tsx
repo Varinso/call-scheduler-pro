@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { useMeetings } from "@/hooks/useMeetings";
 import { EditMeetingDialog } from "@/components/EditMeetingDialog";
+import { MeetingDetailDialog } from "@/components/MeetingDetailDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +46,7 @@ export default function MeetingsList() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
+  const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
   const { data: meetings, isLoading, updateStatus } = useMeetings();
   const { toast } = useToast();
 
@@ -81,12 +83,7 @@ export default function MeetingsList() {
             <div className="flex gap-2">
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9"
-                />
+                <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-36 h-9">
@@ -122,7 +119,11 @@ export default function MeetingsList() {
               </TableHeader>
               <TableBody>
                 {filtered.map((meeting) => (
-                  <TableRow key={meeting.id}>
+                  <TableRow
+                    key={meeting.id}
+                    className="cursor-pointer"
+                    onClick={() => setDetailMeeting(meeting)}
+                  >
                     <TableCell>
                       <div>
                         <p className="font-medium text-sm">{meeting.client_name}</p>
@@ -141,21 +142,26 @@ export default function MeetingsList() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {meeting.status === "scheduled" && (
                             <>
-                              <DropdownMenuItem onClick={() => setEditMeeting(meeting)}>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditMeeting(meeting); }}>
                                 <Pencil className="mr-2 h-4 w-4" /> Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleStatusChange(meeting.id, "completed")}>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(meeting.id, "completed"); }}>
                                 <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Completed
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handleStatusChange(meeting.id, "cancelled")}
+                                onClick={(e) => { e.stopPropagation(); handleStatusChange(meeting.id, "cancelled"); }}
                                 className="text-destructive"
                               >
                                 <XCircle className="mr-2 h-4 w-4" /> Cancel
@@ -177,6 +183,16 @@ export default function MeetingsList() {
           )}
         </CardContent>
       </Card>
+
+      <MeetingDetailDialog
+        meeting={detailMeeting}
+        open={!!detailMeeting}
+        onOpenChange={(open) => !open && setDetailMeeting(null)}
+        onEdit={() => {
+          setEditMeeting(detailMeeting);
+          setDetailMeeting(null);
+        }}
+      />
 
       <EditMeetingDialog meeting={editMeeting} open={!!editMeeting} onOpenChange={(open) => !open && setEditMeeting(null)} />
     </div>
