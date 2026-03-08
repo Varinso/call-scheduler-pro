@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ display_name: string; email: string | null } | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
+  const [providerToken, setProviderToken] = useState<string | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
