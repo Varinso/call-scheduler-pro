@@ -22,6 +22,12 @@ export function QuickScheduleForm({ onSuccess, initialDate }: QuickScheduleFormP
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>(initialDate);
   const [time, setTime] = useState("10:00");
+
+  useEffect(() => {
+    if (initialDate) setDate(initialDate);
+  }, [initialDate]);
+
+
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
