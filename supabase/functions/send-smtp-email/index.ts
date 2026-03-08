@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     const { data: settings } = await supabase
       .from("integration_settings")
       .select("settings, enabled")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("integration_name", "smtp_email")
       .maybeSingle();
 
