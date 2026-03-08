@@ -6,6 +6,82 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function base64UrlEncode(str: string): string {
+  return btoa(unescape(encodeURIComponent(str)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function buildRawEmail(from: string, to: string, subject: string, htmlBody: string): string {
+  const boundary = "boundary_" + crypto.randomUUID().replace(/-/g, "");
+  const raw = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/html; charset="UTF-8"`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    btoa(unescape(encodeURIComponent(htmlBody))),
+    ``,
+    `--${boundary}--`,
+  ].join("\r\n");
+  return raw;
+}
+
+async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OAuth2 token refresh failed [${response.status}]: ${err}`);
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+async function sendViaGmailApi(
+  accessToken: string,
+  from: string,
+  to: string,
+  subject: string,
+  htmlBody: string
+): Promise<void> {
+  const rawEmail = buildRawEmail(from, to, subject, htmlBody);
+  const encodedEmail = base64UrlEncode(rawEmail);
+
+  const response = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ raw: encodedEmail }),
+    }
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gmail API send failed [${response.status}]: ${errText}`);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -33,7 +109,6 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { meeting, email_type, caller_id: bodyCallerId } = body;
 
-    // Determine user ID: from JWT or from caller_id (service-role cron calls)
     let userId: string;
     if (user && !userError) {
       userId = user.id;
@@ -53,28 +128,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get the user's email settings
+    // Get the user's Gmail settings
     const { data: settings } = await supabase
       .from("integration_settings")
       .select("settings, enabled")
       .eq("user_id", userId)
-      .eq("integration_name", "resend_email")
+      .eq("integration_name", "gmail_email")
       .maybeSingle();
 
     if (!settings || !settings.enabled) {
       return new Response(
-        JSON.stringify({ error: "Email notifications not configured or disabled" }),
+        JSON.stringify({ error: "Gmail notifications not configured or disabled" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const config = settings.settings as Record<string, string>;
-    if (!config.api_key || !config.from_email) {
+    if (!config.gmail_address || !config.client_id || !config.client_secret || !config.refresh_token) {
       return new Response(
-        JSON.stringify({ error: "Incomplete email configuration (missing API key or from email)" }),
+        JSON.stringify({ error: "Incomplete Gmail configuration" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Get access token from refresh token
+    const accessToken = await getAccessToken(config.client_id, config.client_secret, config.refresh_token);
 
     // Get caller display name
     const { data: profile } = await supabase
@@ -126,34 +204,10 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Send via Resend HTTP API
-    const resendResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${config.api_key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: config.from_email,
-        to: [meeting.client_email],
-        subject,
-        html: htmlBody,
-      }),
-    });
-
-    if (!resendResponse.ok) {
-      const errData = await resendResponse.text();
-      console.error("Resend API error:", errData);
-      return new Response(
-        JSON.stringify({ error: `Email send failed [${resendResponse.status}]: ${errData}` }),
-        { status: resendResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const resendData = await resendResponse.json();
+    await sendViaGmailApi(accessToken, config.gmail_address, meeting.client_email, subject, htmlBody);
 
     return new Response(
-      JSON.stringify({ success: true, to: meeting.client_email, id: resendData.id }),
+      JSON.stringify({ success: true, to: meeting.client_email }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
