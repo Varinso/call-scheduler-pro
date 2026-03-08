@@ -19,10 +19,10 @@ const statusColors: Record<string, string> = {
 };
 
 interface MeetingDetailDialogProps {
-  meeting: Meeting | null;
+  meeting: MeetingWithBooker | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit?: (meeting: Meeting) => void;
+  onEdit?: (meeting: MeetingWithBooker) => void;
   onCancel?: (id: string) => void;
 }
 
