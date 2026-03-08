@@ -25,6 +25,7 @@ export default function IntegrationSettings() {
       <div className="space-y-4">
         <GoogleCalendarSync />
         <DiscordWebhookSettings />
+        <SmtpEmailSettings />
 
         {integrations.map((item) => (
           <Card key={item.title} className="border-border/50 shadow-sm">
