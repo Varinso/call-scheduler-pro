@@ -15,10 +15,21 @@ export function useMeetings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("meetings")
-        .select("*")
+        .select("*, profiles!meetings_caller_id_fkey(display_name)")
         .order("meeting_date", { ascending: true });
-      if (error) throw error;
-      return data as Meeting[];
+      if (error) {
+        // Fallback without join if FK doesn't exist
+        const { data: fallback, error: err2 } = await supabase
+          .from("meetings")
+          .select("*")
+          .order("meeting_date", { ascending: true });
+        if (err2) throw err2;
+        return fallback as MeetingWithBooker[];
+      }
+      return (data as any[]).map((m) => ({
+        ...m,
+        booked_by: m.profiles?.display_name ?? "Unknown",
+      })) as MeetingWithBooker[];
     },
     enabled: !!user,
   });
