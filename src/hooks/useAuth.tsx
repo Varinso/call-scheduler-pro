@@ -36,8 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Capture provider_token when available (right after OAuth redirect)
+      if (session?.provider_token) {
+        setProviderToken(session.provider_token);
+      }
       if (session?.user) {
-        // Defer fetching to avoid deadlock
         setTimeout(() => {
           fetchProfile(session.user.id);
           fetchRoles(session.user.id);
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null);
         setRoles([]);
+        setProviderToken(null);
       }
       setLoading(false);
     });
