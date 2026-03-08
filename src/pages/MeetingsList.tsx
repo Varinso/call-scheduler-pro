@@ -32,9 +32,9 @@ import { MeetingDetailDialog } from "@/components/MeetingDetailDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import type { Database } from "@/integrations/supabase/types";
+import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
-type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+type Meeting = MeetingWithBooker;
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
