@@ -6,18 +6,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Encode string to base64
-function base64Encode(str: string): string {
-  return btoa(unescape(encodeURIComponent(str)));
+function base64UrlEncode(str: string): string {
+  return btoa(unescape(encodeURIComponent(str)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
-// Build a raw MIME email message
-function buildMimeMessage(from: string, to: string, subject: string, htmlBody: string): string {
+function buildRawEmail(from: string, to: string, subject: string, htmlBody: string): string {
   const boundary = "boundary_" + crypto.randomUUID().replace(/-/g, "");
-  const lines = [
+  const raw = [
     `From: ${from}`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     ``,
@@ -25,64 +26,60 @@ function buildMimeMessage(from: string, to: string, subject: string, htmlBody: s
     `Content-Type: text/html; charset="UTF-8"`,
     `Content-Transfer-Encoding: base64`,
     ``,
-    base64Encode(htmlBody),
+    btoa(unescape(encodeURIComponent(htmlBody))),
     ``,
     `--${boundary}--`,
-  ];
-  return lines.join("\r\n");
+  ].join("\r\n");
+  return raw;
 }
 
-// Get Gmail access token using App Password via OAuth2-like basic auth
-// Gmail API doesn't support App Passwords directly, so we use the Gmail SMTP relay
-// via the Google OAuth2 SMTP endpoint. However, since SMTP ports are blocked,
-// we'll use the Gmail API with a workaround: send via Google's SMTP relay API.
-//
-// Actually, Gmail App Passwords work with Google's SMTP but ports are blocked.
-// Instead, we'll use the Gmail REST API with basic auth is NOT supported.
-// The correct approach: use nodemailer-like raw HTTP approach won't work.
-//
-// Best working approach for Edge Functions: Use Gmail SMTP via fetch to a relay.
-// We'll use the "smtp2http" pattern - sending via Google's API using App Password
-// through the www.googleapis.com/upload/gmail endpoint with XOAuth2.
-//
-// Simplest working solution: Use the public Gmail send endpoint with basic auth
-// by constructing proper MIME and sending via Google's gmail.googleapis.com API.
-// App Passwords can authenticate via HTTP Basic Auth on Google APIs.
+async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
 
-async function sendViaGmail(
-  gmailAddress: string,
-  appPassword: string,
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OAuth2 token refresh failed [${response.status}]: ${err}`);
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+async function sendViaGmailApi(
+  accessToken: string,
+  from: string,
   to: string,
   subject: string,
   htmlBody: string
-): Promise<{ success: boolean; error?: string }> {
-  const mimeMessage = buildMimeMessage(gmailAddress, to, subject, htmlBody);
-  const raw = base64Encode(mimeMessage)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-
-  // Use Gmail API v1 with Basic Auth (App Password)
-  const credentials = base64Encode(`${gmailAddress}:${appPassword}`);
+): Promise<void> {
+  const rawEmail = buildRawEmail(from, to, subject, htmlBody);
+  const encodedEmail = base64UrlEncode(rawEmail);
 
   const response = await fetch(
-    "https://www.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=multipart",
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
     {
       method: "POST",
       headers: {
-        "Authorization": `Basic ${credentials}`,
-        "Content-Type": "message/rfc822",
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
-      body: mimeMessage,
+      body: JSON.stringify({ raw: encodedEmail }),
     }
   );
 
   if (!response.ok) {
     const errText = await response.text();
-    return { success: false, error: `Gmail API [${response.status}]: ${errText}` };
+    throw new Error(`Gmail API send failed [${response.status}]: ${errText}`);
   }
-
-  return { success: true };
 }
 
 Deno.serve(async (req) => {
@@ -112,7 +109,6 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { meeting, email_type, caller_id: bodyCallerId } = body;
 
-    // Determine user ID: from JWT or from caller_id (service-role cron calls)
     let userId: string;
     if (user && !userError) {
       userId = user.id;
@@ -148,12 +144,15 @@ Deno.serve(async (req) => {
     }
 
     const config = settings.settings as Record<string, string>;
-    if (!config.gmail_address || !config.app_password) {
+    if (!config.gmail_address || !config.client_id || !config.client_secret || !config.refresh_token) {
       return new Response(
-        JSON.stringify({ error: "Incomplete Gmail configuration (missing email or app password)" }),
+        JSON.stringify({ error: "Incomplete Gmail configuration" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Get access token from refresh token
+    const accessToken = await getAccessToken(config.client_id, config.client_secret, config.refresh_token);
 
     // Get caller display name
     const { data: profile } = await supabase
@@ -205,20 +204,7 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    const result = await sendViaGmail(
-      config.gmail_address,
-      config.app_password,
-      meeting.client_email,
-      subject,
-      htmlBody
-    );
-
-    if (!result.success) {
-      return new Response(
-        JSON.stringify({ error: result.error }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    await sendViaGmailApi(accessToken, config.gmail_address, meeting.client_email, subject, htmlBody);
 
     return new Response(
       JSON.stringify({ success: true, to: meeting.client_email }),

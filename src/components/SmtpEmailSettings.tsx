@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Loader2, CheckCircle2, Send } from "lucide-react";
+import { Mail, Loader2, CheckCircle2, Send, ExternalLink } from "lucide-react";
 
 export function SmtpEmailSettings() {
   const { user } = useAuth();
@@ -19,7 +19,9 @@ export function SmtpEmailSettings() {
   const [enabled, setEnabled] = useState(false);
   const [form, setForm] = useState({
     gmail_address: "",
-    app_password: "",
+    client_id: "",
+    client_secret: "",
+    refresh_token: "",
   });
 
   useEffect(() => {
@@ -39,7 +41,9 @@ export function SmtpEmailSettings() {
       const s = data.settings as Record<string, string>;
       setForm({
         gmail_address: s?.gmail_address || "",
-        app_password: s?.app_password || "",
+        client_id: s?.client_id || "",
+        client_secret: s?.client_secret || "",
+        refresh_token: s?.refresh_token || "",
       });
       setEnabled(data.enabled);
     }
@@ -110,7 +114,7 @@ export function SmtpEmailSettings() {
     }
   }
 
-  const isConfigured = form.gmail_address && form.app_password;
+  const isConfigured = form.gmail_address && form.client_id && form.client_secret && form.refresh_token;
 
   if (loading) {
     return (
@@ -149,6 +153,35 @@ export function SmtpEmailSettings() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="rounded-lg border border-border/50 bg-accent/30 p-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Setup guide:</strong> You need a Google Cloud OAuth2 credential to send emails from your Gmail.{" "}
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 underline text-primary"
+            >
+              Google Cloud Console <ExternalLink className="h-3 w-3" />
+            </a>
+            <br />
+            1. Create an OAuth2 Client ID (Desktop app type)
+            <br />
+            2. Enable the Gmail API
+            <br />
+            3. Use the{" "}
+            <a
+              href="https://developers.google.com/oauthplayground/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-primary"
+            >
+              OAuth Playground
+            </a>{" "}
+            to generate a refresh token with scope <code className="text-[10px] bg-muted px-1 rounded">https://www.googleapis.com/auth/gmail.send</code>
+          </p>
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="gmail-address" className="text-xs font-medium">Gmail Address</Label>
           <Input
@@ -162,26 +195,50 @@ export function SmtpEmailSettings() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="gmail-app-password" className="text-xs font-medium">App Password</Label>
+          <Label htmlFor="gmail-client-id" className="text-xs font-medium">OAuth2 Client ID</Label>
           <Input
-            id="gmail-app-password"
+            id="gmail-client-id"
+            type="text"
+            placeholder="123456789-abc.apps.googleusercontent.com"
+            value={form.client_id}
+            onChange={(e) => updateField("client_id", e.target.value)}
+            className="h-9 font-mono text-xs"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="gmail-client-secret" className="text-xs font-medium">OAuth2 Client Secret</Label>
+          <Input
+            id="gmail-client-secret"
             type="password"
-            placeholder="xxxx xxxx xxxx xxxx"
-            value={form.app_password}
-            onChange={(e) => updateField("app_password", e.target.value)}
+            placeholder="GOCSPX-..."
+            value={form.client_secret}
+            onChange={(e) => updateField("client_secret", e.target.value)}
+            className="h-9 font-mono text-xs"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="gmail-refresh-token" className="text-xs font-medium">Refresh Token</Label>
+          <Input
+            id="gmail-refresh-token"
+            type="password"
+            placeholder="1//0abc..."
+            value={form.refresh_token}
+            onChange={(e) => updateField("refresh_token", e.target.value)}
             className="h-9 font-mono text-xs"
           />
           <p className="text-xs text-muted-foreground">
-            Generate an App Password:{" "}
+            Generate via{" "}
             <a
-              href="https://myaccount.google.com/apppasswords"
+              href="https://developers.google.com/oauthplayground/"
               target="_blank"
               rel="noopener noreferrer"
               className="underline text-primary"
             >
-              Google Account → App Passwords
-            </a>
-            . Requires 2FA enabled on your Google account.
+              OAuth Playground
+            </a>{" "}
+            — use your Client ID/Secret and the <code className="text-[10px] bg-muted px-1 rounded">gmail.send</code> scope
           </p>
         </div>
 
