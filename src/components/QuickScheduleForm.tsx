@@ -100,6 +100,21 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
         },
       }).catch((err) => console.warn("Discord notification failed:", err));
 
+      // Fire SMTP confirmation email (non-blocking)
+      supabase.functions.invoke("send-smtp-email", {
+        body: {
+          meeting: {
+            client_name: form.client_name.trim(),
+            client_email: form.client_email.trim(),
+            company_name: form.company_name.trim(),
+            meeting_date: meetingDate.toISOString(),
+            google_meet_link: form.google_meet_link.trim(),
+            notes: form.notes.trim(),
+          },
+          email_type: "confirmation",
+        },
+      }).catch((err) => console.warn("SMTP email failed:", err));
+
       toast({ title: "Meeting scheduled!", description: `With ${form.client_name} at ${format(meetingDate, "PPp")}` });
       setForm({ client_name: "", client_email: "", client_phone: "", company_name: "", google_meet_link: "", notes: "" });
       setDate(undefined);

@@ -1,16 +1,11 @@
-import { Settings, Mail, Globe } from "lucide-react";
+import { Settings, Globe } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GoogleCalendarSync } from "@/components/GoogleCalendarSync";
 import { DiscordWebhookSettings } from "@/components/DiscordWebhookSettings";
+import { SmtpEmailSettings } from "@/components/SmtpEmailSettings";
 
 const integrations = [
-  {
-    title: "SMTP Email",
-    description: "Send meeting confirmation and reminder emails to clients.",
-    icon: Mail,
-    status: "Not configured",
-  },
   {
     title: "GoHighLevel CRM",
     description: "Fetch additional client data from your GoHighLevel account.",
@@ -30,6 +25,7 @@ export default function IntegrationSettings() {
       <div className="space-y-4">
         <GoogleCalendarSync />
         <DiscordWebhookSettings />
+        <SmtpEmailSettings />
 
         {integrations.map((item) => (
           <Card key={item.title} className="border-border/50 shadow-sm">
