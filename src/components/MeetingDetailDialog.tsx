@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { DualTimeDisplay } from "@/components/DualTimeDisplay";
+import { getTimezoneOption } from "@/lib/timezone";
 import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 const statusColors: Record<string, string> = {
