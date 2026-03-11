@@ -32,6 +32,7 @@ import { MeetingDetailDialog } from "@/components/MeetingDetailDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { DualTimeDisplay } from "@/components/DualTimeDisplay";
 import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 type Meeting = MeetingWithBooker;
@@ -133,7 +134,10 @@ export default function MeetingsList() {
                     </TableCell>
                     <TableCell className="text-sm">{meeting.company_name || "—"}</TableCell>
                     <TableCell className="text-sm">
-                      {format(new Date(meeting.meeting_date), "MMM d, yyyy · h:mm a")}
+                      <div>
+                        <p className="text-sm">{format(new Date(meeting.meeting_date), "MMM d, yyyy")}</p>
+                        <DualTimeDisplay date={meeting.meeting_date} clientTimezone={(meeting as any).client_timezone || "America/New_York"} compact />
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm">
                       <span className="text-muted-foreground">{meeting.booked_by || "Unknown"}</span>

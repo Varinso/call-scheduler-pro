@@ -1,0 +1,1 @@
+ALTER TABLE public.meetings ADD COLUMN client_timezone text NOT NULL DEFAULT 'America/New_York';

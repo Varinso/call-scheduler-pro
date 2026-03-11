@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { TimezoneSelect } from "@/components/TimezoneSelect";
 
 interface QuickScheduleFormProps {
   onSuccess?: () => void;
@@ -37,6 +38,7 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>(initialDate);
   const [time, setTime] = useState(initialTime || "10:00");
+  const [clientTimezone, setClientTimezone] = useState("America/New_York");
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
@@ -75,7 +77,8 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
       google_meet_link: form.google_meet_link.trim(),
       notes: form.notes.trim() || null,
       meeting_date: meetingDate.toISOString(),
-    });
+      client_timezone: clientTimezone,
+    } as any);
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -119,6 +122,7 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
       setForm({ client_name: "", client_email: "", client_phone: "", company_name: "", google_meet_link: "", notes: "" });
       setDate(undefined);
       setTime("10:00");
+      setClientTimezone("America/New_York");
       onSuccess?.();
     }
     setLoading(false);
@@ -176,6 +180,8 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
           rows={2}
         />
       </div>
+
+      <TimezoneSelect value={clientTimezone} onChange={setClientTimezone} />
 
       <div className="space-y-1.5">
         <Label className="text-xs font-medium">Date *</Label>

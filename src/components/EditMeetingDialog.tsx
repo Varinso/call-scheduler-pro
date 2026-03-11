@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { TimezoneSelect } from "@/components/TimezoneSelect";
 import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 interface EditMeetingDialogProps {
@@ -33,6 +34,7 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("10:00");
+  const [clientTimezone, setClientTimezone] = useState("America/New_York");
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
@@ -47,6 +49,7 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
       const d = new Date(meeting.meeting_date);
       setDate(d);
       setTime(format(d, "HH:mm"));
+      setClientTimezone((meeting as any).client_timezone || "America/New_York");
       setForm({
         client_name: meeting.client_name,
         client_email: meeting.client_email,
@@ -80,7 +83,8 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
         google_meet_link: form.google_meet_link.trim(),
         notes: form.notes.trim(),
         meeting_date: meetingDate.toISOString(),
-      })
+        client_timezone: clientTimezone,
+      } as any)
       .eq("id", meeting.id);
 
     if (error) {
@@ -145,6 +149,8 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
               <Input id="edit_meet_link" value={form.google_meet_link} onChange={(e) => updateField("google_meet_link", e.target.value)} className="pl-9 h-9" />
             </div>
           </div>
+
+          <TimezoneSelect value={clientTimezone} onChange={setClientTimezone} />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">

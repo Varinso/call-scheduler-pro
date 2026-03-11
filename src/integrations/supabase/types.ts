@@ -85,6 +85,7 @@ export type Database = {
           client_email: string
           client_name: string
           client_phone: string
+          client_timezone: string
           company_name: string
           created_at: string
           ghl_contact_data: Json | null
@@ -100,6 +101,7 @@ export type Database = {
           client_email: string
           client_name: string
           client_phone?: string
+          client_timezone?: string
           company_name?: string
           created_at?: string
           ghl_contact_data?: Json | null
@@ -115,6 +117,7 @@ export type Database = {
           client_email?: string
           client_name?: string
           client_phone?: string
+          client_timezone?: string
           company_name?: string
           created_at?: string
           ghl_contact_data?: Json | null
