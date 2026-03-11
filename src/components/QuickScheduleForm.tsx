@@ -38,6 +38,7 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>(initialDate);
   const [time, setTime] = useState(initialTime || "10:00");
+  const [clientTimezone, setClientTimezone] = useState("America/New_York");
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
