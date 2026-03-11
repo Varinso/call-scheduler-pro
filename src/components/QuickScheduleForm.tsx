@@ -122,6 +122,7 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
       setForm({ client_name: "", client_email: "", client_phone: "", company_name: "", google_meet_link: "", notes: "" });
       setDate(undefined);
       setTime("10:00");
+      setClientTimezone("America/New_York");
       onSuccess?.();
     }
     setLoading(false);
