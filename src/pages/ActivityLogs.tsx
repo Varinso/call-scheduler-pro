@@ -41,6 +41,8 @@ export default function ActivityLogs() {
               {logs.map((log) => {
                 const cfg = actionLabels[log.action] ?? { label: log.action, color: "bg-muted text-muted-foreground" };
                 const details = log.details as Record<string, string> | null;
+                const clientName = details?.client_name || log.meetings?.client_name;
+                const company = details?.company || log.meetings?.company_name;
                 return (
                   <div
                     key={log.id}
@@ -51,12 +53,12 @@ export default function ActivityLogs() {
                         <Badge variant="outline" className={cfg.color + " text-xs"}>
                           {cfg.label}
                         </Badge>
-                        {details?.client_name && (
-                          <span className="text-sm font-medium truncate">{details.client_name}</span>
+                        {clientName && (
+                          <span className="text-sm font-medium truncate">{clientName}</span>
                         )}
                       </div>
-                      {details?.company && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{details.company}</p>
+                      {company && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{company}</p>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground shrink-0">

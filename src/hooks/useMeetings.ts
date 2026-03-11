@@ -4,7 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import type { Database } from "@/integrations/supabase/types";
 
 type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+type ActivityLog = Database["public"]["Tables"]["activity_logs"]["Row"];
 export type MeetingWithBooker = Meeting & { booked_by?: string };
+export type ActivityLogWithMeeting = ActivityLog & {
+  meetings?: Pick<Meeting, "client_name" | "company_name"> | null;
+};
 type MeetingStatus = Database["public"]["Enums"]["meeting_status"];
 
 export function useMeetings() {
@@ -33,6 +37,13 @@ export function useMeetings() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: MeetingStatus }) => {
+      const { data: existingMeeting, error: existingMeetingError } = await supabase
+        .from("meetings")
+        .select("id, client_name, company_name")
+        .eq("id", id)
+        .single();
+      if (existingMeetingError) throw existingMeetingError;
+
       const { error } = await supabase.from("meetings").update({ status }).eq("id", id);
       if (error) throw error;
 
@@ -41,7 +52,11 @@ export function useMeetings() {
           user_id: user.id,
           meeting_id: id,
           action: `meeting_${status}`,
-          details: { status },
+          details: {
+            status,
+            client_name: existingMeeting.client_name,
+            company: existingMeeting.company_name,
+          },
         });
       }
     },
@@ -59,11 +74,11 @@ export function useActivityLogs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("activity_logs")
-        .select("*")
+        .select("*, meetings(client_name, company_name)")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      return data;
+      return (data ?? []) as ActivityLogWithMeeting[];
     },
     enabled: !!user,
   });

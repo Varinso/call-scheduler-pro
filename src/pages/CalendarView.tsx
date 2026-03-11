@@ -68,6 +68,10 @@ export default function CalendarView() {
   const { data: meetings, isLoading, updateStatus } = useMeetings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const visibleMeetings = useMemo(
+    () => meetings?.filter((meeting) => meeting.status !== "cancelled") ?? [],
+    [meetings]
+  );
 
   // Navigation
   const navigate = (dir: 1 | -1) => {
@@ -90,14 +94,14 @@ export default function CalendarView() {
 
   // Meetings on a specific day
   const meetingsOnDay = (day: Date) =>
-    meetings?.filter((m) => isSameDay(new Date(m.meeting_date), day)) ?? [];
+    visibleMeetings.filter((m) => isSameDay(new Date(m.meeting_date), day));
 
   // Meetings in a specific hour on a day
   const meetingsInHour = (day: Date, hour: number) =>
-    meetings?.filter((m) => {
+    visibleMeetings.filter((m) => {
       const d = new Date(m.meeting_date);
       return isSameDay(d, day) && d.getHours() === hour;
-    }) ?? [];
+    });
 
   const openScheduleSheet = (date: Date, time?: string) => {
     setSelectedDate(date);

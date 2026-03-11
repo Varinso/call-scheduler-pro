@@ -45,7 +45,7 @@ const statusColors: Record<string, string> = {
 
 export default function MeetingsList() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
   const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
   const { data: meetings, isLoading, updateStatus } = useMeetings();
@@ -56,7 +56,10 @@ export default function MeetingsList() {
       m.client_name.toLowerCase().includes(search.toLowerCase()) ||
       m.company_name.toLowerCase().includes(search.toLowerCase()) ||
       m.client_email.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || m.status === statusFilter;
+    const matchStatus =
+      statusFilter === "active"
+        ? m.status !== "cancelled"
+        : m.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
@@ -74,7 +77,7 @@ export default function MeetingsList() {
     <div className="space-y-6 max-w-6xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Meetings</h1>
-        <p className="text-muted-foreground mt-1">Manage all your scheduled meetings</p>
+        <p className="text-muted-foreground mt-1">Manage your active and past meetings</p>
       </div>
 
       <Card className="border-border/50 shadow-sm">
@@ -91,7 +94,7 @@ export default function MeetingsList() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="scheduled">Scheduled</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
