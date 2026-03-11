@@ -49,6 +49,7 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
       const d = new Date(meeting.meeting_date);
       setDate(d);
       setTime(format(d, "HH:mm"));
+      setClientTimezone((meeting as any).client_timezone || "America/New_York");
       setForm({
         client_name: meeting.client_name,
         client_email: meeting.client_email,
