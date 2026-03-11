@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
+import { createDateInTimezone, formatTimeInTz24 } from "@/lib/timezone";
 import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 interface EditMeetingDialogProps {
@@ -48,8 +49,9 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
     if (meeting) {
       const d = new Date(meeting.meeting_date);
       setDate(d);
-      setTime(format(d, "HH:mm"));
-      setClientTimezone((meeting as any).client_timezone || "America/New_York");
+      const tz = (meeting as any).client_timezone || "America/New_York";
+      setTime(formatTimeInTz24(d, tz));
+      setClientTimezone(tz);
       setForm({
         client_name: meeting.client_name,
         client_email: meeting.client_email,
@@ -70,8 +72,7 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
 
     setLoading(true);
     const [hours, minutes] = time.split(":").map(Number);
-    const meetingDate = new Date(date);
-    meetingDate.setHours(hours, minutes, 0, 0);
+    const meetingDate = createDateInTimezone(date, hours, minutes, clientTimezone);
 
     const { error } = await supabase
       .from("meetings")

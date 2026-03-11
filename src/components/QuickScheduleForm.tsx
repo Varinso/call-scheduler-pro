@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
+import { createDateInTimezone } from "@/lib/timezone";
 
 interface QuickScheduleFormProps {
   onSuccess?: () => void;
@@ -65,8 +66,7 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
 
     setLoading(true);
     const [hours, minutes] = time.split(":").map(Number);
-    const meetingDate = new Date(date);
-    meetingDate.setHours(hours, minutes, 0, 0);
+    const meetingDate = createDateInTimezone(date, hours, minutes, clientTimezone);
 
     const { error } = await supabase.from("meetings").insert({
       caller_id: user.id,
@@ -99,6 +99,8 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
             meeting_date: meetingDate.toISOString(),
             google_meet_link: form.google_meet_link.trim(),
             notes: form.notes.trim(),
+            client_timezone: clientTimezone,
+            caller_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           },
         },
       }).catch((err) => console.warn("Discord notification failed:", err));
@@ -113,6 +115,8 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
             meeting_date: meetingDate.toISOString(),
             google_meet_link: form.google_meet_link.trim(),
             notes: form.notes.trim(),
+            client_timezone: clientTimezone,
+            caller_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           },
           email_type: "confirmation",
         },

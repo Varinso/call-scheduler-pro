@@ -88,16 +88,43 @@ Deno.serve(async (req) => {
 
     const callerName = profile?.display_name || user.email || "Unknown";
     const meetingDate = new Date(meeting.meeting_date);
+
+    // Timezone-aware formatting
+    const clientTz = meeting.client_timezone || "America/New_York";
+    const callerTz = meeting.caller_timezone || "Asia/Dhaka";
+
     const dateStr = meetingDate.toLocaleDateString("en-US", {
+      timeZone: clientTz,
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     });
-    const timeStr = meetingDate.toLocaleTimeString("en-US", {
+
+    const clientTimeStr = meetingDate.toLocaleTimeString("en-US", {
+      timeZone: clientTz,
       hour: "2-digit",
       minute: "2-digit",
     });
+
+    const callerTimeStr = meetingDate.toLocaleTimeString("en-US", {
+      timeZone: callerTz,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Short labels for timezones
+    const tzShortName = (tz: string) => {
+      try {
+        const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" }).formatToParts(meetingDate);
+        return parts.find((p: Intl.DateTimeFormatPart) => p.type === "timeZoneName")?.value ?? tz.split("/").pop();
+      } catch { return tz.split("/").pop(); }
+    };
+
+    const clientTzLabel = tzShortName(clientTz);
+    const callerTzLabel = tzShortName(callerTz);
+
+    const timeDisplay = `${clientTimeStr} (${clientTzLabel}) / ${callerTimeStr} (${callerTzLabel})`;
 
     // Build Discord embed
     const embed = {
@@ -108,7 +135,7 @@ Deno.serve(async (req) => {
         { name: "Company", value: meeting.company_name || "N/A", inline: true },
         { name: "Scheduled by", value: `**${callerName}**`, inline: true },
         { name: "Date", value: dateStr, inline: true },
-        { name: "Time", value: timeStr, inline: true },
+        { name: "🕐 Time", value: timeDisplay, inline: false },
         { name: "Email", value: meeting.client_email || "N/A", inline: true },
       ],
       timestamp: new Date().toISOString(),

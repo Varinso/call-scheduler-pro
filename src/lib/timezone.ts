@@ -89,3 +89,52 @@ export function dualTimeDisplay(date: Date | string, clientTimezone: string): {
     nextDay,
   };
 }
+
+/**
+ * Create a Date (UTC) from date parts and a time meant to be in a specific timezone.
+ * E.g. createDateInTimezone(date, 10, 0, "America/New_York") → UTC Date representing 10:00 AM ET.
+ */
+export function createDateInTimezone(date: Date, hours: number, minutes: number, timezone: string): Date {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+
+  // Start with a guess: treat desired wall-clock time as UTC
+  let guess = Date.UTC(year, month, day, hours, minutes, 0, 0);
+
+  // Iterate to converge (usually 1-2 passes)
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(guess);
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(d);
+
+    const get = (type: string) => {
+      const val = parseInt(parts.find((p) => p.type === type)?.value ?? "0");
+      return type === "hour" && val === 24 ? 0 : val;
+    };
+
+    const actual = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), 0, 0);
+    const desired = Date.UTC(year, month, day, hours, minutes, 0, 0);
+    const diff = desired - actual;
+    if (diff === 0) break;
+    guess += diff;
+  }
+
+  return new Date(guess);
+}
+
+/**
+ * Format a date's time in a specific timezone as "HH:mm" (24h) — for form inputs.
+ */
+export function formatTimeInTz24(date: Date | string, timezone: string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false });
+}
