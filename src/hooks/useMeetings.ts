@@ -18,9 +18,15 @@ export function useMeetings() {
   const query = useQuery({
     queryKey: ["meetings", user?.id],
     queryFn: async () => {
+      if (!user) return [] as MeetingWithBooker[];
+
       // Fetch meetings and profiles separately, then join in JS
       const [meetingsRes, profilesRes] = await Promise.all([
-        supabase.from("meetings").select("*").order("meeting_date", { ascending: true }),
+        supabase
+          .from("meetings")
+          .select("*")
+          .eq("caller_id", user.id)
+          .order("meeting_date", { ascending: true }),
         supabase.from("profiles").select("user_id, display_name"),
       ]);
       if (meetingsRes.error) throw meetingsRes.error;
@@ -37,28 +43,36 @@ export function useMeetings() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: MeetingStatus }) => {
+      if (!user) throw new Error("Not authenticated");
+
       const { data: existingMeeting, error: existingMeetingError } = await supabase
         .from("meetings")
         .select("id, client_name, company_name")
         .eq("id", id)
+        .eq("caller_id", user.id)
         .single();
       if (existingMeetingError) throw existingMeetingError;
 
-      const { error } = await supabase.from("meetings").update({ status }).eq("id", id);
+      const { data: updatedMeeting, error } = await supabase
+        .from("meetings")
+        .update({ status })
+        .eq("id", id)
+        .eq("caller_id", user.id)
+        .select("id")
+        .maybeSingle();
       if (error) throw error;
+      if (!updatedMeeting) throw new Error("Could not update this meeting. It may not belong to your account.");
 
-      if (user) {
-        await supabase.from("activity_logs").insert({
-          user_id: user.id,
-          meeting_id: id,
-          action: `meeting_${status}`,
-          details: {
-            status,
-            client_name: existingMeeting.client_name,
-            company: existingMeeting.company_name,
-          },
-        });
-      }
+      await supabase.from("activity_logs").insert({
+        user_id: user.id,
+        meeting_id: id,
+        action: `meeting_${status}`,
+        details: {
+          status,
+          client_name: existingMeeting.client_name,
+          company: existingMeeting.company_name,
+        },
+      });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meetings"] }),
   });
@@ -72,9 +86,12 @@ export function useActivityLogs() {
   return useQuery({
     queryKey: ["activity_logs", user?.id],
     queryFn: async () => {
+      if (!user) return [] as ActivityLogWithMeeting[];
+
       const { data, error } = await supabase
         .from("activity_logs")
         .select("*, meetings(client_name, company_name)")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;

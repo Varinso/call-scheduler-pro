@@ -203,6 +203,10 @@ export default function MeetingsList() {
           setEditMeeting(m);
           setDetailMeeting(null);
         }}
+        onCancel={(id) => {
+          setDetailMeeting(null);
+          handleStatusChange(id, "cancelled");
+        }}
       />
 
       <EditMeetingDialog meeting={editMeeting} open={!!editMeeting} onOpenChange={(open) => !open && setEditMeeting(null)} />
