@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { TimezoneSelect } from "@/components/TimezoneSelect";
 
 interface QuickScheduleFormProps {
   onSuccess?: () => void;
