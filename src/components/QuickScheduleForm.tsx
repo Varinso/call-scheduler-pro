@@ -181,6 +181,8 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
         />
       </div>
 
+      <TimezoneSelect value={clientTimezone} onChange={setClientTimezone} />
+
       <div className="space-y-1.5">
         <Label className="text-xs font-medium">Date *</Label>
         <Popover>

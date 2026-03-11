@@ -59,7 +59,13 @@ export function MeetingDetailDialog({ meeting, open, onOpenChange, onEdit, onCan
             <DetailRow icon={Phone} label="Phone" value={meeting.client_phone} />
             <DetailRow icon={Building2} label="Company" value={meeting.company_name} />
             <DetailRow icon={CalendarIcon} label="Date" value={format(new Date(meeting.meeting_date), "MMM d, yyyy")} />
-            <DetailRow icon={Clock} label="Time" value={format(new Date(meeting.meeting_date), "h:mm a")} />
+            <div className="flex items-start gap-3">
+              <Clock className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Time ({getTimezoneOption((meeting as any).client_timezone)?.short || "ET"})</p>
+                <DualTimeDisplay date={meeting.meeting_date} clientTimezone={(meeting as any).client_timezone || "America/New_York"} />
+              </div>
+            </div>
             <DetailRow icon={UserCircle} label="Booked by" value={meeting.booked_by || "Unknown"} />
             {meeting.google_meet_link && (
               <div className="flex items-start gap-3">

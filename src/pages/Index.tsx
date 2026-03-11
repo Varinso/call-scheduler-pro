@@ -99,9 +99,7 @@ export default function Index() {
                         <p className="text-xs text-muted-foreground truncate">{meeting.company_name}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-medium">
-                          {format(new Date(meeting.meeting_date), "h:mm a")}
-                        </p>
+                        <DualTimeDisplay date={meeting.meeting_date} clientTimezone={(meeting as any).client_timezone || "America/New_York"} compact />
                         <Badge variant="outline" className={cfg.className + " text-[10px] px-1.5 py-0"}>
                           {cfg.label}
                         </Badge>
