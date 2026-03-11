@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, isToday } from "date-fns";
 import { CalendarIcon, Video, User, Mail, Phone, Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -73,6 +73,12 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
     setLoading(true);
     const [hours, minutes] = time.split(":").map(Number);
     const meetingDate = createDateInTimezone(date, hours, minutes, clientTimezone);
+
+    if (meetingDate <= new Date()) {
+      toast({ title: "Cannot schedule in the past", description: "Please pick a future date and time.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("meetings")
@@ -164,7 +170,7 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus className="p-3 pointer-events-auto" />
+                  <Calendar mode="single" selected={date} onSelect={setDate} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
             </div>

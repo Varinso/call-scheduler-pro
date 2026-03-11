@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { useState, useEffect, useMemo } from "react";
+import { format, isToday } from "date-fns";
 import { CalendarIcon, Video, User, Mail, Phone, Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +32,15 @@ const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
   const label = `${hour12}:${String(m).padStart(2, "0")} ${ampm}`;
   return { value, label };
 });
+
+function isSlotPast(slotValue: string, timezone: string): boolean {
+  const now = new Date();
+  const [h, m] = slotValue.split(":").map(Number);
+  const todayInTz = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
+  const nowHour = todayInTz.getHours();
+  const nowMin = todayInTz.getMinutes();
+  return h < nowHour || (h === nowHour && m <= nowMin);
+}
 
 export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: QuickScheduleFormProps) {
   const { user } = useAuth();
@@ -67,6 +76,12 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
     setLoading(true);
     const [hours, minutes] = time.split(":").map(Number);
     const meetingDate = createDateInTimezone(date, hours, minutes, clientTimezone);
+
+    if (meetingDate <= new Date()) {
+      toast({ title: "Cannot schedule in the past", description: "Please pick a future date and time.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
     const { error } = await supabase.from("meetings").insert({
       caller_id: user.id,
@@ -206,22 +221,27 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
         <Label className="text-xs font-medium">Time *</Label>
         <ScrollArea className="h-[140px] rounded-lg border border-input bg-background p-1.5">
           <div className="grid grid-cols-4 gap-1">
-            {TIME_SLOTS.map((slot) => (
-              <Button
-                key={slot.value}
-                type="button"
-                variant={time === slot.value ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "h-8 text-xs font-medium",
-                  time === slot.value && "shadow-sm",
-                  time !== slot.value && "text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => setTime(slot.value)}
-              >
-                {slot.label}
-              </Button>
-            ))}
+            {TIME_SLOTS.map((slot) => {
+              const isPast = date && isToday(date) && isSlotPast(slot.value, clientTimezone);
+              return (
+                <Button
+                  key={slot.value}
+                  type="button"
+                  variant={time === slot.value ? "default" : "ghost"}
+                  size="sm"
+                  disabled={!!isPast}
+                  className={cn(
+                    "h-8 text-xs font-medium",
+                    time === slot.value && "shadow-sm",
+                    isPast && "opacity-40 line-through",
+                    time !== slot.value && !isPast && "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setTime(slot.value)}
+                >
+                  {slot.label}
+                </Button>
+              );
+            })}
           </div>
         </ScrollArea>
       </div>
