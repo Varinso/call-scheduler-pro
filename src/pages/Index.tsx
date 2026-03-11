@@ -6,6 +6,7 @@ import { QuickScheduleForm } from "@/components/QuickScheduleForm";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DualTimeDisplay } from "@/components/DualTimeDisplay";
 
 const statusConfig = {
   scheduled: { label: "Scheduled", icon: Clock, className: "bg-primary/10 text-primary border-primary/20" },
