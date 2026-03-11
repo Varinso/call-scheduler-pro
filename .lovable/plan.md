@@ -1,66 +1,58 @@
 
-I can see the Gmail email integration is stuck in an OAuth2 authentication error loop. The persistent "unauthorized_client" error indicates the Google Cloud OAuth2 setup is incorrect. Let me analyze the issues and create a comprehensive plan to fix this.
 
-## Current Problems
+## Timezone Support for Cross-Region Scheduling
 
-1. **OAuth Client Type Mismatch**: The UI instructs users to create a "Desktop app type" OAuth client, but this typically won't work with refresh tokens in server environments.
+### Problem
+Callers in Bangladesh (BD) schedule meetings with US clients. A meeting booked at 10 PM US time needs to also display the equivalent BD time everywhere — in the calendar, meetings list, detail dialogs, and notifications.
 
-2. **Missing Redirect URI**: The setup doesn't clearly specify that `https://developers.google.com/oauthplayground` must be added as an authorized redirect URI.
+### Approach
+Add a **client timezone** selector to the scheduling form. Store it with each meeting. Display **dual times** (client's timezone + caller's local timezone) across all views.
 
-3. **Complex Setup Process**: The current OAuth2 flow is too complex for users, requiring multiple steps across different Google services.
+### Database Change
+Add a `client_timezone` column to the `meetings` table:
+```sql
+ALTER TABLE meetings ADD COLUMN client_timezone text NOT NULL DEFAULT 'America/New_York';
+```
 
-4. **Error Handling**: The edge function doesn't provide helpful debugging information about what specifically is wrong with the OAuth2 credentials.
+### Timezone Options
+Grouped by region with common zones:
+- **USA**: Eastern, Central, Mountain, Pacific, Alaska, Hawaii
+- **Europe**: London, Paris/Berlin, Helsinki, Moscow
+- **Asia**: Dhaka (BD), Kolkata, Dubai, Singapore, Tokyo
 
-## Plan: Simplify Gmail Integration with Better Setup Guide
+### Files to Change
 
-### 1. Update Setup Instructions
-- Fix the OAuth client type from "Desktop app" to "Web application"
-- Add clear step-by-step instructions with screenshots
-- Include the exact redirect URI needed
-- Add troubleshooting section for common OAuth2 errors
+1. **New utility: `src/lib/timezone.ts`**
+   - Timezone list with labels and IANA identifiers
+   - Helper to format a date in a given timezone
+   - Helper to show dual-time display string (e.g. "10:00 PM EST / 9:00 AM BST+6")
 
-### 2. Improve Error Handling
-- Add more detailed error messages in the edge function
-- Include specific OAuth2 error codes and solutions
-- Add validation for credential format before attempting API calls
+2. **`src/components/QuickScheduleForm.tsx`**
+   - Add timezone `<Select>` dropdown (defaults to "America/New_York")
+   - When creating the meeting date, construct it relative to the selected timezone
+   - Save `client_timezone` to the database
 
-### 3. Add Setup Validation
-- Create a credential validation function that tests OAuth2 setup before saving
-- Provide immediate feedback on credential issues
-- Guide users through fixing common configuration problems
+3. **`src/components/EditMeetingDialog.tsx`**
+   - Add timezone selector, pre-filled from meeting data
+   - Save updated timezone on edit
 
-### 4. Alternative: Switch to App Passwords
-- Offer a simpler alternative using Gmail App Passwords instead of OAuth2
-- This would eliminate the complex OAuth2 setup entirely
-- Users just need to enable 2FA and generate an app password
+4. **`src/components/MeetingDetailDialog.tsx`**
+   - Show dual time: client timezone time + local (BD) time
 
-### 5. Enhanced UI Feedback
-- Add real-time validation of credential format
-- Show setup progress indicators
-- Provide copy-paste friendly values for Google Cloud Console
+5. **`src/pages/MeetingsList.tsx`**
+   - Date & Time column shows dual timezone display
 
-## Implementation Details
+6. **`src/pages/CalendarView.tsx`**
+   - Meeting chips and day/week views show dual time
+   - Time slots interpreted in context of selected timezone
 
-**Step 1**: Update the SmtpEmailSettings component with:
-- Corrected setup instructions (Web application type)
-- Clear redirect URI specification
-- Step-by-step validation
-- Better error messaging
+7. **`src/pages/Index.tsx`**
+   - Today's meetings sidebar shows dual time
 
-**Step 2**: Enhance the send-smtp-email edge function with:
-- Detailed OAuth2 error logging
-- Credential format validation
-- Better error response messages
-- Debug mode for troubleshooting
+### How Dual Time Display Looks
+```
+10:00 PM EST
+8:00 AM BD (+1d)
+```
+The "+1d" indicator appears when the converted time falls on the next day.
 
-**Step 3**: Consider adding App Password alternative:
-- Simpler SMTP authentication using Gmail App Passwords
-- Fallback option for users who struggle with OAuth2
-- Less secure but easier to set up
-
-**Step 4**: Add setup wizard:
-- Interactive guide through Google Cloud Console setup
-- Real-time validation of each step
-- Immediate feedback on configuration issues
-
-This plan will resolve the OAuth2 authentication issues by providing clearer setup instructions, better error handling, and potentially a simpler authentication method. The focus is on making the Gmail integration actually work reliably for users.
