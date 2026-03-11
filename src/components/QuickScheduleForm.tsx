@@ -77,7 +77,8 @@ export function QuickScheduleForm({ onSuccess, initialDate, initialTime }: Quick
       google_meet_link: form.google_meet_link.trim(),
       notes: form.notes.trim() || null,
       meeting_date: meetingDate.toISOString(),
-    });
+      client_timezone: clientTimezone,
+    } as any);
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
