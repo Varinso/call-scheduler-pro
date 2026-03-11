@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { TimezoneSelect } from "@/components/TimezoneSelect";
 import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 interface EditMeetingDialogProps {
