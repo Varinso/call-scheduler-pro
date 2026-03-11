@@ -32,6 +32,7 @@ import { MeetingDetailDialog } from "@/components/MeetingDetailDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { DualTimeDisplay } from "@/components/DualTimeDisplay";
 import type { MeetingWithBooker } from "@/hooks/useMeetings";
 
 type Meeting = MeetingWithBooker;
