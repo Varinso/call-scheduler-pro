@@ -83,7 +83,8 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
         google_meet_link: form.google_meet_link.trim(),
         notes: form.notes.trim(),
         meeting_date: meetingDate.toISOString(),
-      })
+        client_timezone: clientTimezone,
+      } as any)
       .eq("id", meeting.id);
 
     if (error) {
