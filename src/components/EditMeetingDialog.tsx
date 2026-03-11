@@ -34,6 +34,7 @@ export function EditMeetingDialog({ meeting, open, onOpenChange }: EditMeetingDi
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("10:00");
+  const [clientTimezone, setClientTimezone] = useState("America/New_York");
   const [form, setForm] = useState({
     client_name: "",
     client_email: "",
