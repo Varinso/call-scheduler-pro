@@ -20,7 +20,8 @@ export function SmtpEmailSettings() {
   const [form, setForm] = useState({
     from_name: "",
     from_email: "",
-    api_key: "",
+    app_password: "",
+    reply_to: "",
   });
 
   useEffect(() => {
@@ -41,7 +42,8 @@ export function SmtpEmailSettings() {
       setForm({
         from_name: s?.from_name || "",
         from_email: s?.from_email || "",
-        api_key: s?.api_key || "",
+        app_password: s?.app_password || "",
+        reply_to: s?.reply_to || s?.from_email || "",
       });
       setEnabled(data.enabled);
     }
@@ -112,7 +114,7 @@ export function SmtpEmailSettings() {
     }
   }
 
-  const isConfigured = !!(form.from_email && form.api_key);
+  const isConfigured = !!(form.from_email && form.app_password);
 
   if (loading) {
     return (
@@ -153,21 +155,21 @@ export function SmtpEmailSettings() {
       <CardContent className="space-y-4">
         <div className="rounded-lg border border-border/50 bg-accent/30 p-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Quick setup (2 min):</strong>
+            <strong className="text-foreground">Gmail App Password setup (2 min):</strong>
             <br />
-            1. Go to{" "}
-            <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">
-              resend.com
+            1. In your Google account, enable 2-Step Verification
+            <br />
+            2. Open{" "}
+            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline text-primary">
+              App Passwords
             </a>{" "}
-            — create a free account
+            and generate a password for "Mail"
             <br />
-            2. Add your sending domain <span className="opacity-70">(or skip and use <code className="bg-muted px-1 rounded text-[10px]">onboarding@resend.dev</code> to test first)</span>
+            3. Put your Gmail address as From Email
             <br />
-            3. Go to <strong>API Keys</strong> → create a key → copy it
+            4. Paste the 16-character app password below and Save
             <br />
-            4. Paste the API key and your From Email below, then Save
-            <br />
-            <span className="text-[11px] opacity-60">Free plan: 100 emails/day · 3,000/month</span>
+            <span className="text-[11px] opacity-60">No domain needed.</span>
           </p>
         </div>
 
@@ -195,20 +197,30 @@ export function SmtpEmailSettings() {
             className="h-9 text-xs"
           />
           <p className="text-xs text-muted-foreground">
-            Must be a verified sender on Resend. Use{" "}
-            <code className="bg-muted px-1 rounded text-[10px]">onboarding@resend.dev</code>{" "}
-            for quick testing without domain verification.
+            Use the Gmail address you want to send from.
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="resend-api-key" className="text-xs font-medium">Resend API Key *</Label>
+          <Label htmlFor="reply-to" className="text-xs font-medium">Reply-To (optional)</Label>
           <Input
-            id="resend-api-key"
+            id="reply-to"
+            type="email"
+            placeholder="same as from email"
+            value={form.reply_to}
+            onChange={(e) => updateField("reply_to", e.target.value)}
+            className="h-9 text-xs"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="app-password" className="text-xs font-medium">Gmail App Password *</Label>
+          <Input
+            id="app-password"
             type="password"
-            placeholder="re_..."
-            value={form.api_key}
-            onChange={(e) => updateField("api_key", e.target.value)}
+            placeholder="xxxx xxxx xxxx xxxx"
+            value={form.app_password}
+            onChange={(e) => updateField("app_password", e.target.value)}
             className="h-9 font-mono text-xs"
           />
         </div>

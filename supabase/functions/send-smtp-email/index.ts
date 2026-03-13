@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@6.9.16";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,29 +12,64 @@ function escapeHtml(value: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
-async function sendViaResend(
-  apiKey: string,
+async function sendViaGmailSmtp(
+  username: string,
+  appPassword: string,
   from: string,
+  replyTo: string,
   to: string,
   subject: string,
   html: string,
-): Promise<void> {
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+) {
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: username,
+      pass: appPassword,
     },
-    body: JSON.stringify({ from, to: [to], subject, html }),
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Resend API error [${res.status}]: ${err}`);
+
+  await transporter.sendMail({
+    from,
+    replyTo,
+    to,
+    subject,
+    html,
+  });
+}
+
+async function resolveSettingsUserId(
+  supabase: ReturnType<typeof createClient>,
+  authHeader: string | null,
+  bodyCallerId?: string,
+): Promise<string | null> {
+  if (authHeader) {
+    const token = authHeader.replace("Bearer ", "");
+    if (token) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser(token);
+      if (user?.id) return user.id;
+    }
   }
+
+  if (bodyCallerId) return bodyCallerId;
+
+  const { data: fallback } = await supabase
+    .from("integration_settings")
+    .select("user_id")
+    .eq("integration_name", "email_settings")
+    .eq("enabled", true)
+    .limit(1)
+    .maybeSingle();
+
+  return fallback?.user_id ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -43,37 +79,13 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const token = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token);
-
     const body = await req.json();
     const { meeting, email_type, caller_id: bodyCallerId } = body;
-
-    let userId: string;
-    if (user && !userError) {
-      userId = user.id;
-    } else if (bodyCallerId && token === supabaseKey) {
-      userId = bodyCallerId;
-    } else {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     if (!meeting) {
       return new Response(JSON.stringify({ error: "No meeting data provided" }), {
@@ -82,32 +94,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get the user's email settings
-    const { data: settings } = await supabase
-      .from("integration_settings")
-      .select("settings, enabled")
-      .eq("user_id", userId)
-      .eq("integration_name", "email_settings")
-      .maybeSingle();
+    const envFromEmail = (Deno.env.get("GMAIL_FROM_EMAIL") || "").trim();
+    const envAppPassword = (Deno.env.get("GMAIL_APP_PASSWORD") || "").trim();
+    const envFromName = (Deno.env.get("GMAIL_FROM_NAME") || "").trim();
+    const envReplyTo = (Deno.env.get("GMAIL_REPLY_TO") || "").trim();
 
-    if (!settings || !settings.enabled) {
-      return new Response(
-        JSON.stringify({ error: "Email notifications not configured or disabled" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    let config: Record<string, string> = {};
+    if (envFromEmail && envAppPassword) {
+      config = {
+        from_email: envFromEmail,
+        app_password: envAppPassword,
+        from_name: envFromName,
+        reply_to: envReplyTo || envFromEmail,
+      };
+    } else {
+      const userId = await resolveSettingsUserId(supabase, authHeader, bodyCallerId);
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "No email settings found. Configure Settings > Integrations or set GMAIL_FROM_EMAIL and GMAIL_APP_PASSWORD secrets." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-    const config = settings.settings as Record<string, string>;
-    if (!config.api_key || !config.from_email) {
-      return new Response(
-        JSON.stringify({ error: "Incomplete email configuration — set From Email and API Key in Settings → Integrations" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Get the user's email settings
+      const { data: settings } = await supabase
+        .from("integration_settings")
+        .select("settings, enabled")
+        .eq("user_id", userId)
+        .eq("integration_name", "email_settings")
+        .maybeSingle();
+
+      if (!settings || !settings.enabled) {
+        return new Response(
+          JSON.stringify({ error: "Email notifications not configured or disabled" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      config = settings.settings as Record<string, string>;
+      if (!config.from_email || !config.app_password) {
+        return new Response(
+          JSON.stringify({ error: "Incomplete email configuration. Set From Email and Gmail App Password in Settings > Integrations." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const from = config.from_name
       ? `${config.from_name} <${config.from_email}>`
       : config.from_email;
+    const replyTo = config.reply_to || config.from_email;
 
     const meetingDate = new Date(meeting.meeting_date);
     const dateStr = meetingDate.toLocaleDateString("en-US", {
@@ -150,7 +186,15 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    await sendViaResend(config.api_key, from, meeting.client_email, subject, htmlBody);
+    await sendViaGmailSmtp(
+      config.from_email,
+      config.app_password,
+      from,
+      replyTo,
+      meeting.client_email,
+      subject,
+      htmlBody,
+    );
 
     return new Response(
       JSON.stringify({ success: true, to: meeting.client_email }),
