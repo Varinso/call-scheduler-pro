@@ -33,6 +33,15 @@ function buildRawEmail(from: string, to: string, subject: string, htmlBody: stri
   return raw;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -151,6 +160,8 @@ Deno.serve(async (req) => {
       );
     }
 
+    const companyInbox = (config.company_email || config.gmail_address || "").trim();
+
     // Get access token from refresh token
     const accessToken = await getAccessToken(config.client_id, config.client_secret, config.refresh_token);
 
@@ -179,6 +190,10 @@ Deno.serve(async (req) => {
       ? `⏰ Reminder: Meeting with ${callerName} in 1 hour`
       : `✅ Meeting Confirmed with ${callerName}`;
 
+    const companySubject = isReminder
+      ? `⏰ Reminder sent: ${meeting.client_name} meeting in 1 hour`
+      : `📅 New meeting booked: ${meeting.client_name} (${dateStr} ${timeStr})`;
+
     const meetLink = meeting.google_meet_link
       ? `<p style="margin:12px 0"><a href="${meeting.google_meet_link}" style="background:#2563eb;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;display:inline-block">Join Google Meet</a></p>`
       : "";
@@ -204,10 +219,53 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    await sendViaGmailApi(accessToken, config.gmail_address, meeting.client_email, subject, htmlBody);
+    const companyHtmlBody = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f9fafb;padding:24px">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:32px">
+    <h1 style="font-size:20px;color:#111827;margin-top:0">${companySubject}</h1>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0">
+      <tr><td style="padding:8px 0;color:#6b7280;width:130px">Client</td><td style="padding:8px 0;color:#111827;font-weight:600">${escapeHtml(meeting.client_name || "N/A")}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280">Client Email</td><td style="padding:8px 0;color:#111827">${escapeHtml(meeting.client_email || "N/A")}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280">Company</td><td style="padding:8px 0;color:#111827">${escapeHtml(meeting.company_name || "-")}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280">Date</td><td style="padding:8px 0;color:#111827">${escapeHtml(dateStr)}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280">Time</td><td style="padding:8px 0;color:#111827">${escapeHtml(timeStr)}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280">Booked by</td><td style="padding:8px 0;color:#111827">${escapeHtml(callerName)}</td></tr>
+    </table>
+    ${meetLink}
+    ${meeting.notes ? `<p style="margin:16px 0;padding:12px;background:#f3f4f6;border-radius:8px;color:#374151;font-size:14px"><strong>Notes:</strong> ${escapeHtml(meeting.notes)}</p>` : ""}
+    <p style="margin-top:24px;font-size:12px;color:#9ca3af">Internal booking notification from CallMeet</p>
+  </div>
+</body>
+</html>`;
+
+    const recipients = [
+      {
+        to: (meeting.client_email || "").trim(),
+        subject,
+        html: htmlBody,
+      },
+      ...(!isReminder
+        ? [
+            {
+              to: companyInbox,
+              subject: companySubject,
+              html: companyHtmlBody,
+            },
+          ]
+        : []),
+    ]
+      .filter((item) => item.to)
+      .filter((item, index, arr) => arr.findIndex((x) => x.to.toLowerCase() === item.to.toLowerCase()) === index);
+
+    for (const recipient of recipients) {
+      await sendViaGmailApi(accessToken, config.gmail_address, recipient.to, recipient.subject, recipient.html);
+    }
 
     return new Response(
-      JSON.stringify({ success: true, to: meeting.client_email }),
+      JSON.stringify({ success: true, recipients: recipients.map((r) => r.to) }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

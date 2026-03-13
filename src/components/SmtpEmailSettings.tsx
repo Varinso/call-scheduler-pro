@@ -19,6 +19,7 @@ export function SmtpEmailSettings() {
   const [enabled, setEnabled] = useState(false);
   const [form, setForm] = useState({
     gmail_address: "",
+    company_email: "",
     client_id: "",
     client_secret: "",
     refresh_token: "",
@@ -41,6 +42,7 @@ export function SmtpEmailSettings() {
       const s = data.settings as Record<string, string>;
       setForm({
         gmail_address: s?.gmail_address || "",
+        company_email: s?.company_email || s?.gmail_address || "",
         client_id: s?.client_id || "",
         client_secret: s?.client_secret || "",
         refresh_token: s?.refresh_token || "",
@@ -102,7 +104,10 @@ export function SmtpEmailSettings() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({ title: "Test email sent!", description: `Check ${form.gmail_address} for the test email.` });
+      toast({
+        title: "Test email sent!",
+        description: `Email sent to ${form.gmail_address}${form.company_email && form.company_email !== form.gmail_address ? ` and ${form.company_email}` : ""}.`,
+      });
     } catch (err) {
       toast({
         title: "Test failed",
@@ -179,6 +184,8 @@ export function SmtpEmailSettings() {
               OAuth Playground
             </a>{" "}
             to generate a refresh token with scope <code className="text-[10px] bg-muted px-1 rounded">https://www.googleapis.com/auth/gmail.send</code>
+            <br />
+            4. When enabled, every new booking sends two emails automatically: one to the client and one to your company inbox.
           </p>
         </div>
 
@@ -192,6 +199,19 @@ export function SmtpEmailSettings() {
             onChange={(e) => updateField("gmail_address", e.target.value)}
             className="h-9 text-xs"
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="company-email" className="text-xs font-medium">Company Inbox Email</Label>
+          <Input
+            id="company-email"
+            type="email"
+            placeholder="team@yourcompany.com"
+            value={form.company_email}
+            onChange={(e) => updateField("company_email", e.target.value)}
+            className="h-9 text-xs"
+          />
+          <p className="text-xs text-muted-foreground">If left empty, your Gmail address will receive the company notification.</p>
         </div>
 
         <div className="space-y-1.5">
