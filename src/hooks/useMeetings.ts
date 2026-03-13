@@ -16,7 +16,7 @@ export function useMeetings() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["meetings", user?.id],
+    queryKey: ["meetings"],
     queryFn: async () => {
       if (!user) return [] as MeetingWithBooker[];
 
@@ -25,7 +25,6 @@ export function useMeetings() {
         supabase
           .from("meetings")
           .select("*")
-          .eq("caller_id", user.id)
           .order("meeting_date", { ascending: true }),
         supabase.from("profiles").select("user_id, display_name"),
       ]);
