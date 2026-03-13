@@ -50,7 +50,7 @@ async function sendViaGmailSmtp(
 }
 
 async function resolveSettingsUserId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   authHeader: string | null,
   bodyCallerId?: string,
 ): Promise<string | null> {
@@ -74,7 +74,7 @@ async function resolveSettingsUserId(
     .limit(1)
     .maybeSingle();
 
-  return fallback?.user_id ?? null;
+  return (fallback as any)?.user_id ?? null;
 }
 
 Deno.serve(async (req) => {
