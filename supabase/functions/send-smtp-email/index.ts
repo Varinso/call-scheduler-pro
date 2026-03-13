@@ -25,23 +25,28 @@ async function sendViaGmailSmtp(
   subject: string,
   html: string,
 ) {
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: username,
-      pass: appPassword,
+  const client = new SMTPClient({
+    connection: {
+      hostname: "smtp.gmail.com",
+      port: 465,
+      tls: true,
+      auth: {
+        username,
+        password: appPassword,
+      },
     },
   });
 
-  await transporter.sendMail({
+  await client.send({
     from,
-    replyTo,
     to,
     subject,
+    content: "auto",
     html,
+    headers: { "Reply-To": replyTo },
   });
+
+  await client.close();
 }
 
 async function resolveSettingsUserId(
