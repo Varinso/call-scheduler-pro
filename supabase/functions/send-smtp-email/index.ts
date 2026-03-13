@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import nodemailer from "npm:nodemailer@6.9.16";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,23 +25,28 @@ async function sendViaGmailSmtp(
   subject: string,
   html: string,
 ) {
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: username,
-      pass: appPassword,
+  const client = new SMTPClient({
+    connection: {
+      hostname: "smtp.gmail.com",
+      port: 465,
+      tls: true,
+      auth: {
+        username,
+        password: appPassword,
+      },
     },
   });
 
-  await transporter.sendMail({
+  await client.send({
     from,
-    replyTo,
     to,
     subject,
+    content: "auto",
     html,
+    headers: { "Reply-To": replyTo },
   });
+
+  await client.close();
 }
 
 async function resolveSettingsUserId(
