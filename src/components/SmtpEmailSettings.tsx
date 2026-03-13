@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Loader2, CheckCircle2, Send, ExternalLink } from "lucide-react";
+import { Mail, Loader2, CheckCircle2, Send } from "lucide-react";
 
 export function SmtpEmailSettings() {
   const { user } = useAuth();
@@ -18,11 +18,9 @@ export function SmtpEmailSettings() {
   const [testing, setTesting] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [form, setForm] = useState({
-    gmail_address: "",
-    company_email: "",
-    client_id: "",
-    client_secret: "",
-    refresh_token: "",
+    from_name: "",
+    from_email: "",
+    api_key: "",
   });
 
   useEffect(() => {
@@ -35,17 +33,15 @@ export function SmtpEmailSettings() {
       .from("integration_settings")
       .select("settings, enabled")
       .eq("user_id", user!.id)
-      .eq("integration_name", "gmail_email")
+      .eq("integration_name", "email_settings")
       .maybeSingle();
 
     if (data) {
       const s = data.settings as Record<string, string>;
       setForm({
-        gmail_address: s?.gmail_address || "",
-        company_email: s?.company_email || s?.gmail_address || "",
-        client_id: s?.client_id || "",
-        client_secret: s?.client_secret || "",
-        refresh_token: s?.refresh_token || "",
+        from_name: s?.from_name || "",
+        from_email: s?.from_email || "",
+        api_key: s?.api_key || "",
       });
       setEnabled(data.enabled);
     }
@@ -64,7 +60,7 @@ export function SmtpEmailSettings() {
       .upsert(
         {
           user_id: user.id,
-          integration_name: "gmail_email",
+          integration_name: "email_settings",
           settings: { ...form },
           enabled,
         },
@@ -75,8 +71,8 @@ export function SmtpEmailSettings() {
       toast({ title: "Error saving", description: error.message, variant: "destructive" });
     } else {
       toast({
-        title: "Gmail settings saved",
-        description: enabled ? "Email notifications are active." : "Settings saved but disabled.",
+        title: "Email settings saved",
+        description: enabled ? "Client confirmation emails are active." : "Settings saved but disabled.",
       });
     }
     setSaving(false);
@@ -91,11 +87,11 @@ export function SmtpEmailSettings() {
         body: {
           meeting: {
             client_name: "Test Client",
-            client_email: form.gmail_address,
+            client_email: form.from_email,
             company_name: "Test Company",
             meeting_date: new Date().toISOString(),
             google_meet_link: "https://meet.google.com/test",
-            notes: "This is a test email from CallMeet.",
+            notes: "This is a test email from Call Scheduler.",
           },
           email_type: "confirmation",
         },
@@ -104,10 +100,7 @@ export function SmtpEmailSettings() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({
-        title: "Test email sent!",
-        description: `Email sent to ${form.gmail_address}${form.company_email && form.company_email !== form.gmail_address ? ` and ${form.company_email}` : ""}.`,
-      });
+      toast({ title: "Test email sent!", description: `Check ${form.from_email} inbox.` });
     } catch (err) {
       toast({
         title: "Test failed",
@@ -119,7 +112,7 @@ export function SmtpEmailSettings() {
     }
   }
 
-  const isConfigured = form.gmail_address && form.client_id && form.client_secret && form.refresh_token;
+  const isConfigured = !!(form.from_email && form.api_key);
 
   if (loading) {
     return (
@@ -140,9 +133,9 @@ export function SmtpEmailSettings() {
               <Mail className="h-5 w-5 text-accent-foreground" />
             </div>
             <div>
-              <CardTitle className="text-base">Gmail Email Notifications</CardTitle>
+              <CardTitle className="text-base">Email Notifications</CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Send meeting confirmations & reminders from your Gmail account
+                Automatically send a confirmation email to clients when a meeting is booked
               </CardDescription>
             </div>
           </div>
@@ -160,112 +153,70 @@ export function SmtpEmailSettings() {
       <CardContent className="space-y-4">
         <div className="rounded-lg border border-border/50 bg-accent/30 p-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Setup guide:</strong> You need a Google Cloud OAuth2 credential to send emails from your Gmail.{" "}
-            <a
-              href="https://console.cloud.google.com/apis/credentials"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 underline text-primary"
-            >
-              Google Cloud Console <ExternalLink className="h-3 w-3" />
-            </a>
+            <strong className="text-foreground">Quick setup (2 min):</strong>
             <br />
-            1. Create an OAuth2 Client ID (Desktop app type)
-            <br />
-            2. Enable the Gmail API
-            <br />
-            3. Use the{" "}
-            <a
-              href="https://developers.google.com/oauthplayground/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-primary"
-            >
-              OAuth Playground
+            1. Go to{" "}
+            <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">
+              resend.com
             </a>{" "}
-            to generate a refresh token with scope <code className="text-[10px] bg-muted px-1 rounded">https://www.googleapis.com/auth/gmail.send</code>
+            — create a free account
             <br />
-            4. When enabled, every new booking sends two emails automatically: one to the client and one to your company inbox.
+            2. Add your sending domain <span className="opacity-70">(or skip and use <code className="bg-muted px-1 rounded text-[10px]">onboarding@resend.dev</code> to test first)</span>
+            <br />
+            3. Go to <strong>API Keys</strong> → create a key → copy it
+            <br />
+            4. Paste the API key and your From Email below, then Save
+            <br />
+            <span className="text-[11px] opacity-60">Free plan: 100 emails/day · 3,000/month</span>
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="gmail-address" className="text-xs font-medium">Gmail Address</Label>
+          <Label htmlFor="from-name" className="text-xs font-medium">Sender Name</Label>
           <Input
-            id="gmail-address"
-            type="email"
-            placeholder="you@gmail.com"
-            value={form.gmail_address}
-            onChange={(e) => updateField("gmail_address", e.target.value)}
-            className="h-9 text-xs"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="company-email" className="text-xs font-medium">Company Inbox Email</Label>
-          <Input
-            id="company-email"
-            type="email"
-            placeholder="team@yourcompany.com"
-            value={form.company_email}
-            onChange={(e) => updateField("company_email", e.target.value)}
-            className="h-9 text-xs"
-          />
-          <p className="text-xs text-muted-foreground">If left empty, your Gmail address will receive the company notification.</p>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="gmail-client-id" className="text-xs font-medium">OAuth2 Client ID</Label>
-          <Input
-            id="gmail-client-id"
+            id="from-name"
             type="text"
-            placeholder="123456789-abc.apps.googleusercontent.com"
-            value={form.client_id}
-            onChange={(e) => updateField("client_id", e.target.value)}
-            className="h-9 font-mono text-xs"
+            placeholder="Your Business Name"
+            value={form.from_name}
+            onChange={(e) => updateField("from_name", e.target.value)}
+            className="h-9 text-xs"
           />
+          <p className="text-xs text-muted-foreground">Shown as the "From" name in the client's inbox</p>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="gmail-client-secret" className="text-xs font-medium">OAuth2 Client Secret</Label>
+          <Label htmlFor="from-email" className="text-xs font-medium">From Email Address *</Label>
           <Input
-            id="gmail-client-secret"
-            type="password"
-            placeholder="GOCSPX-..."
-            value={form.client_secret}
-            onChange={(e) => updateField("client_secret", e.target.value)}
-            className="h-9 font-mono text-xs"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="gmail-refresh-token" className="text-xs font-medium">Refresh Token</Label>
-          <Input
-            id="gmail-refresh-token"
-            type="password"
-            placeholder="1//0abc..."
-            value={form.refresh_token}
-            onChange={(e) => updateField("refresh_token", e.target.value)}
-            className="h-9 font-mono text-xs"
+            id="from-email"
+            type="email"
+            placeholder="you@yourdomain.com"
+            value={form.from_email}
+            onChange={(e) => updateField("from_email", e.target.value)}
+            className="h-9 text-xs"
           />
           <p className="text-xs text-muted-foreground">
-            Generate via{" "}
-            <a
-              href="https://developers.google.com/oauthplayground/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-primary"
-            >
-              OAuth Playground
-            </a>{" "}
-            — use your Client ID/Secret and the <code className="text-[10px] bg-muted px-1 rounded">gmail.send</code> scope
+            Must be a verified sender on Resend. Use{" "}
+            <code className="bg-muted px-1 rounded text-[10px]">onboarding@resend.dev</code>{" "}
+            for quick testing without domain verification.
           </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="resend-api-key" className="text-xs font-medium">Resend API Key *</Label>
+          <Input
+            id="resend-api-key"
+            type="password"
+            placeholder="re_..."
+            value={form.api_key}
+            onChange={(e) => updateField("api_key", e.target.value)}
+            className="h-9 font-mono text-xs"
+          />
         </div>
 
         <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
           <div>
             <p className="text-sm font-medium">Enable email notifications</p>
-            <p className="text-xs text-muted-foreground">Send confirmations & reminders to clients from your Gmail</p>
+            <p className="text-xs text-muted-foreground">Send a confirmation email to the client automatically on every booking</p>
           </div>
           <Switch checked={enabled} onCheckedChange={setEnabled} />
         </div>
