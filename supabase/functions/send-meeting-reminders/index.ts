@@ -16,6 +16,20 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check if company email settings are enabled
+    const { data: emailSettings } = await supabase
+      .from("company_settings")
+      .select("settings, enabled")
+      .eq("integration_name", "email_settings")
+      .maybeSingle();
+
+    if (!emailSettings || !emailSettings.enabled) {
+      return new Response(JSON.stringify({ sent: 0, message: "Email not configured" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Find meetings starting in the next 55-65 minutes that are still scheduled
     const now = new Date();
     const from = new Date(now.getTime() + 55 * 60 * 1000).toISOString();
@@ -47,18 +61,6 @@ Deno.serve(async (req) => {
     let failed = 0;
 
     for (const meeting of meetings) {
-      // Check if this caller has SMTP enabled
-      const { data: settings } = await supabase
-        .from("integration_settings")
-        .select("settings, enabled")
-        .eq("user_id", meeting.caller_id)
-        .eq("integration_name", "email_settings")
-        .maybeSingle();
-
-      if (!settings || !settings.enabled) continue;
-
-      // Create a service-role auth header to call send-smtp-email on behalf of the user
-      // We need to impersonate the user by generating a call with their context
       try {
         const response = await fetch(
           `${supabaseUrl}/functions/v1/send-smtp-email`,
@@ -78,15 +80,12 @@ Deno.serve(async (req) => {
                 notes: meeting.notes,
               },
               email_type: "reminder",
-              // Pass caller_id so the email function can look up SMTP settings
-              caller_id: meeting.caller_id,
             }),
           }
         );
 
         if (response.ok) {
           sent++;
-          // Log the reminder
           await supabase.from("activity_logs").insert({
             user_id: meeting.caller_id,
             meeting_id: meeting.id,

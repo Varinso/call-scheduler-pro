@@ -31,9 +31,8 @@ export function SmtpEmailSettings() {
   async function loadSettings() {
     setLoading(true);
     const { data } = await supabase
-      .from("integration_settings")
+      .from("company_settings")
       .select("settings, enabled")
-      .eq("user_id", user!.id)
       .eq("integration_name", "email_settings")
       .maybeSingle();
 
@@ -58,15 +57,15 @@ export function SmtpEmailSettings() {
     setSaving(true);
 
     const { error } = await supabase
-      .from("integration_settings")
+      .from("company_settings")
       .upsert(
         {
-          user_id: user.id,
           integration_name: "email_settings",
           settings: { ...form },
           enabled,
+          updated_by: user.id,
         },
-        { onConflict: "user_id,integration_name" }
+        { onConflict: "integration_name" }
       );
 
     if (error) {

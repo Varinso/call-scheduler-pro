@@ -37,11 +37,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get the user's Discord webhook settings
+    // Get company-wide Discord webhook settings
     const { data: settings } = await supabase
-      .from("integration_settings")
+      .from("company_settings")
       .select("settings, enabled")
-      .eq("user_id", user.id)
       .eq("integration_name", "discord_webhook")
       .maybeSingle();
 
@@ -129,7 +128,7 @@ Deno.serve(async (req) => {
     // Build Discord embed
     const embed = {
       title: "📅 New Meeting Scheduled",
-      color: 0x5865f2, // Discord blurple
+      color: 0x5865f2,
       fields: [
         { name: "Client", value: meeting.client_name || "N/A", inline: true },
         { name: "Company", value: meeting.company_name || "N/A", inline: true },
