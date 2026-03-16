@@ -1,66 +1,73 @@
 
-I can see the Gmail email integration is stuck in an OAuth2 authentication error loop. The persistent "unauthorized_client" error indicates the Google Cloud OAuth2 setup is incorrect. Let me analyze the issues and create a comprehensive plan to fix this.
 
-## Current Problems
+## Problem
 
-1. **OAuth Client Type Mismatch**: The UI instructs users to create a "Desktop app type" OAuth client, but this typically won't work with refresh tokens in server environments.
+Integration settings (Discord webhook, Slack webhook, SMTP email) are currently stored **per user** (`user_id` column in `integration_settings`). Every caller gets their own copy, and settings reset for each user. You want these to be **company-wide**: saved once by admin, shared across all users.
 
-2. **Missing Redirect URI**: The setup doesn't clearly specify that `https://developers.google.com/oauthplayground` must be added as an authorized redirect URI.
+## Plan
 
-3. **Complex Setup Process**: The current OAuth2 flow is too complex for users, requiring multiple steps across different Google services.
+### 1. Add a `company_settings` table (database migration)
 
-4. **Error Handling**: The edge function doesn't provide helpful debugging information about what specifically is wrong with the OAuth2 credentials.
+Create a new table `company_settings` that stores a single row per integration (no `user_id`):
 
-## Plan: Simplify Gmail Integration with Better Setup Guide
+```sql
+CREATE TABLE public.company_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  integration_name text NOT NULL UNIQUE,
+  settings jsonb NOT NULL DEFAULT '{}'::jsonb,
+  enabled boolean NOT NULL DEFAULT false,
+  updated_by uuid REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-### 1. Update Setup Instructions
-- Fix the OAuth client type from "Desktop app" to "Web application"
-- Add clear step-by-step instructions with screenshots
-- Include the exact redirect URI needed
-- Add troubleshooting section for common OAuth2 errors
+ALTER TABLE public.company_settings ENABLE ROW LEVEL SECURITY;
 
-### 2. Improve Error Handling
-- Add more detailed error messages in the edge function
-- Include specific OAuth2 error codes and solutions
-- Add validation for credential format before attempting API calls
+-- All authenticated users can read (needed for edge functions to work)
+CREATE POLICY "Authenticated users can read company settings"
+  ON public.company_settings FOR SELECT TO authenticated USING (true);
 
-### 3. Add Setup Validation
-- Create a credential validation function that tests OAuth2 setup before saving
-- Provide immediate feedback on credential issues
-- Guide users through fixing common configuration problems
+-- Only admins can insert/update/delete
+CREATE POLICY "Admins can manage company settings"
+  ON public.company_settings FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
-### 4. Alternative: Switch to App Passwords
-- Offer a simpler alternative using Gmail App Passwords instead of OAuth2
-- This would eliminate the complex OAuth2 setup entirely
-- Users just need to enable 2FA and generate an app password
+-- Auto-update updated_at
+CREATE TRIGGER update_company_settings_updated_at
+  BEFORE UPDATE ON public.company_settings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
 
-### 5. Enhanced UI Feedback
-- Add real-time validation of credential format
-- Show setup progress indicators
-- Provide copy-paste friendly values for Google Cloud Console
+### 2. Update frontend components
 
-## Implementation Details
+Update all three settings components (`DiscordWebhookSettings`, `SlackWebhookSettings`, `SmtpEmailSettings`) to:
+- Read/write from `company_settings` instead of `integration_settings`
+- Query by `integration_name` only (no `user_id` filter)
+- Upsert by `integration_name` (unique constraint handles conflict)
+- Remove `user_id` from upsert payload, add `updated_by: user.id`
 
-**Step 1**: Update the SmtpEmailSettings component with:
-- Corrected setup instructions (Web application type)
-- Clear redirect URI specification
-- Step-by-step validation
-- Better error messaging
+### 3. Update edge functions
 
-**Step 2**: Enhance the send-smtp-email edge function with:
-- Detailed OAuth2 error logging
-- Credential format validation
-- Better error response messages
-- Debug mode for troubleshooting
+All four edge functions need to read from `company_settings` instead of `integration_settings`:
 
-**Step 3**: Consider adding App Password alternative:
-- Simpler SMTP authentication using Gmail App Passwords
-- Fallback option for users who struggle with OAuth2
-- Less secure but easier to set up
+- **discord-webhook**: Query `company_settings` where `integration_name = 'discord_webhook'` (remove `user_id` filter)
+- **slack-webhook**: Same pattern for `slack_webhook`
+- **send-smtp-email**: Query `company_settings` where `integration_name = 'email_settings'` (remove the `resolveSettingsUserId` function entirely)
+- **send-meeting-reminders**: Query `company_settings` for `email_settings` once (not per-caller), then send reminders for all meetings
 
-**Step 4**: Add setup wizard:
-- Interactive guide through Google Cloud Console setup
-- Real-time validation of each step
-- Immediate feedback on configuration issues
+### 4. Redeploy all edge functions
 
-This plan will resolve the OAuth2 authentication issues by providing clearer setup instructions, better error handling, and potentially a simpler authentication method. The focus is on making the Gmail integration actually work reliably for users.
+Deploy `discord-webhook`, `slack-webhook`, `send-smtp-email`, and `send-meeting-reminders` after updating.
+
+### Summary of changes
+
+| Area | What changes |
+|------|-------------|
+| New table | `company_settings` with RLS (read: all auth, write: admin only) |
+| 3 frontend components | Read/write `company_settings` instead of per-user `integration_settings` |
+| 4 edge functions | Query `company_settings` by `integration_name` only, no user scoping |
+| Deployment | Redeploy all 4 edge functions |
+
+The existing `integration_settings` table stays untouched (no migration needed to drop it). The new `company_settings` table ensures one set of settings for the whole company.
+
