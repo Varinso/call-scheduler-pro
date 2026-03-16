@@ -26,9 +26,8 @@ export function DiscordWebhookSettings() {
   async function loadSettings() {
     setLoading(true);
     const { data } = await supabase
-      .from("integration_settings")
+      .from("company_settings")
       .select("settings, enabled")
-      .eq("user_id", user!.id)
       .eq("integration_name", "discord_webhook")
       .maybeSingle();
 
@@ -45,15 +44,15 @@ export function DiscordWebhookSettings() {
     setSaving(true);
 
     const { error } = await supabase
-      .from("integration_settings")
+      .from("company_settings")
       .upsert(
         {
-          user_id: user.id,
           integration_name: "discord_webhook",
           settings: { webhook_url: webhookUrl.trim() },
           enabled,
+          updated_by: user.id,
         },
-        { onConflict: "user_id,integration_name" }
+        { onConflict: "integration_name" }
       );
 
     if (error) {
