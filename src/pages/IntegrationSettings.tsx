@@ -1,7 +1,7 @@
 import { Settings, Globe } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GoogleCalendarSync } from "@/components/GoogleCalendarSync";
+
 import { DiscordWebhookSettings } from "@/components/DiscordWebhookSettings";
 import { SlackWebhookSettings } from "@/components/SlackWebhookSettings";
 import { SmtpEmailSettings } from "@/components/SmtpEmailSettings";
@@ -24,7 +24,7 @@ export default function IntegrationSettings() {
       </div>
 
       <div className="space-y-4">
-        <GoogleCalendarSync />
+        
         <DiscordWebhookSettings />
         <SlackWebhookSettings />
         <SmtpEmailSettings />

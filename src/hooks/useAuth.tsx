@@ -9,7 +9,6 @@ interface AuthContextType {
   profile: { display_name: string; email: string | null } | null;
   roles: string[];
   isAdmin: boolean;
-  providerToken: string | null;
   signOut: () => Promise<void>;
 }
 
@@ -20,7 +19,6 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   roles: [],
   isAdmin: false,
-  providerToken: null,
   signOut: async () => {},
 });
 
@@ -30,16 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ display_name: string; email: string | null } | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
-  const [providerToken, setProviderToken] = useState<string | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      // Capture provider_token when available (right after OAuth redirect)
-      if (session?.provider_token) {
-        setProviderToken(session.provider_token);
-      }
       if (session?.user) {
         setTimeout(() => {
           fetchProfile(session.user.id);
@@ -48,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null);
         setRoles([]);
-        setProviderToken(null);
       }
       setLoading(false);
     });
@@ -56,9 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.provider_token) {
-        setProviderToken(session.provider_token);
-      }
       if (session?.user) {
         fetchProfile(session.user.id);
         fetchRoles(session.user.id);
@@ -99,7 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         roles,
         isAdmin: roles.includes("admin"),
-        providerToken,
         signOut,
       }}
     >
