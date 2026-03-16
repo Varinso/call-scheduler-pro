@@ -37,11 +37,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get the user's Slack webhook settings
+    // Get company-wide Slack webhook settings
     const { data: settings } = await supabase
-      .from("integration_settings")
+      .from("company_settings")
       .select("settings, enabled")
-      .eq("user_id", user.id)
       .eq("integration_name", "slack_webhook")
       .maybeSingle();
 

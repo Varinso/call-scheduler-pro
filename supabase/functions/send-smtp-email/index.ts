@@ -49,48 +49,18 @@ async function sendViaGmailSmtp(
   await client.close();
 }
 
-async function resolveSettingsUserId(
-  supabase: any,
-  authHeader: string | null,
-  bodyCallerId?: string,
-): Promise<string | null> {
-  if (authHeader) {
-    const token = authHeader.replace("Bearer ", "");
-    if (token) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser(token);
-      if (user?.id) return user.id;
-    }
-  }
-
-  if (bodyCallerId) return bodyCallerId;
-
-  const { data: fallback } = await supabase
-    .from("integration_settings")
-    .select("user_id")
-    .eq("integration_name", "email_settings")
-    .eq("enabled", true)
-    .limit(1)
-    .maybeSingle();
-
-  return (fallback as any)?.user_id ?? null;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
-    const { meeting, email_type, caller_id: bodyCallerId } = body;
+    const { meeting, email_type } = body;
 
     if (!meeting) {
       return new Response(JSON.stringify({ error: "No meeting data provided" }), {
@@ -99,6 +69,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check env vars first, then fall back to company_settings
     const envFromEmail = (Deno.env.get("GMAIL_FROM_EMAIL") || "").trim();
     const envAppPassword = (Deno.env.get("GMAIL_APP_PASSWORD") || "").trim();
     const envFromName = (Deno.env.get("GMAIL_FROM_NAME") || "").trim();
@@ -113,19 +84,10 @@ Deno.serve(async (req) => {
         reply_to: envReplyTo || envFromEmail,
       };
     } else {
-      const userId = await resolveSettingsUserId(supabase, authHeader, bodyCallerId);
-      if (!userId) {
-        return new Response(JSON.stringify({ error: "No email settings found. Configure Settings > Integrations or set GMAIL_FROM_EMAIL and GMAIL_APP_PASSWORD secrets." }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Get the user's email settings
+      // Get company-wide email settings
       const { data: settings } = await supabase
-        .from("integration_settings")
+        .from("company_settings")
         .select("settings, enabled")
-        .eq("user_id", userId)
         .eq("integration_name", "email_settings")
         .maybeSingle();
 
