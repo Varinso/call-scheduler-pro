@@ -11,6 +11,7 @@ import CalendarView from "./pages/CalendarView";
 import MeetingsList from "./pages/MeetingsList";
 import ActivityLogs from "./pages/ActivityLogs";
 import IntegrationSettings from "./pages/IntegrationSettings";
+import DailyReport from "./pages/DailyReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/calendar" element={<ProtectedRoute><CalendarView /></ProtectedRoute>} />
             <Route path="/meetings" element={<ProtectedRoute><MeetingsList /></ProtectedRoute>} />
             <Route path="/activity" element={<ProtectedRoute><ActivityLogs /></ProtectedRoute>} />
+            <Route path="/daily-report" element={<ProtectedRoute><DailyReport /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><IntegrationSettings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

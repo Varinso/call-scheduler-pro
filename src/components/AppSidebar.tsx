@@ -6,6 +6,7 @@ import {
   Settings,
   LogOut,
   Phone,
+  ClipboardCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -29,6 +30,7 @@ const mainNav = [
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Meetings", url: "/meetings", icon: List },
   { title: "Activity", url: "/activity", icon: Activity },
+  { title: "Daily Report", url: "/daily-report", icon: ClipboardCheck },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

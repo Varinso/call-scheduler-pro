@@ -66,11 +66,47 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { meeting } = body;
+    const { meeting, daily_report } = body;
+
+    // Handle daily report payload
+    if (daily_report) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .single();
+
+      const callerName = profile?.display_name || user.email || "Unknown";
+      const reportDate = new Date(daily_report.report_date + "T00:00:00Z");
+      const dateStr = reportDate.toLocaleDateString("en-US", { day: "numeric", month: "long" });
+
+      const statsLine = `${dateStr} | Dials - ${daily_report.dials} | Sets - ${daily_report.sets} | Quality Conversations - ${daily_report.quality_conversations} | Live Calls with Closers - ${daily_report.live_calls_with_closers} | Closed Sets - ${daily_report.closed_sets} | Day - ${daily_report.day_rating}/10`;
+
+      const discordResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: `📊 **${callerName}** — End of Day Report\n${statsLine}`,
+        }),
+      });
+
+      if (!discordResponse.ok) {
+        const errorText = await discordResponse.text();
+        return new Response(JSON.stringify({ error: errorText }), {
+          status: discordResponse.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!meeting) {
       return new Response(
-        JSON.stringify({ error: "No meeting data provided" }),
+        JSON.stringify({ error: "No meeting or daily_report data provided" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
