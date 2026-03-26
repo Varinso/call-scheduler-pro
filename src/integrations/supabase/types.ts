@@ -79,6 +79,45 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_reports: {
+        Row: {
+          closed_sets: number
+          created_at: string
+          day_rating: number
+          dials: number
+          id: string
+          live_calls_with_closers: number
+          quality_conversations: number
+          report_date: string
+          sets: number
+          user_id: string
+        }
+        Insert: {
+          closed_sets?: number
+          created_at?: string
+          day_rating?: number
+          dials?: number
+          id?: string
+          live_calls_with_closers?: number
+          quality_conversations?: number
+          report_date?: string
+          sets?: number
+          user_id: string
+        }
+        Update: {
+          closed_sets?: number
+          created_at?: string
+          day_rating?: number
+          dials?: number
+          id?: string
+          live_calls_with_closers?: number
+          quality_conversations?: number
+          report_date?: string
+          sets?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           created_at: string
