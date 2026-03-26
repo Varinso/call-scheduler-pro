@@ -1,66 +1,73 @@
 
-I can see the Gmail email integration is stuck in an OAuth2 authentication error loop. The persistent "unauthorized_client" error indicates the Google Cloud OAuth2 setup is incorrect. Let me analyze the issues and create a comprehensive plan to fix this.
 
-## Current Problems
+## End-of-Day Caller Stats Report
 
-1. **OAuth Client Type Mismatch**: The UI instructs users to create a "Desktop app type" OAuth client, but this typically won't work with refresh tokens in server environments.
+### What it does
+A form where callers submit their daily stats. The number of scheduled meetings (sets) is auto-filled from the database. On submit, it saves to the database and sends a Discord message like:
 
-2. **Missing Redirect URI**: The setup doesn't clearly specify that `https://developers.google.com/oauthplayground` must be added as an authorized redirect URI.
+```
+10 March | Dials - 70 | Sets - 3 | Quality Conversations - 4 | Live Calls with Closers - 0 | Closed Sets - 0 | Day - 4/10
+```
 
-3. **Complex Setup Process**: The current OAuth2 flow is too complex for users, requiring multiple steps across different Google services.
+### Changes
 
-4. **Error Handling**: The edge function doesn't provide helpful debugging information about what specifically is wrong with the OAuth2 credentials.
+**1. Database — new `daily_reports` table**
 
-## Plan: Simplify Gmail Integration with Better Setup Guide
+```sql
+CREATE TABLE public.daily_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  report_date date NOT NULL DEFAULT CURRENT_DATE,
+  dials integer NOT NULL DEFAULT 0,
+  sets integer NOT NULL DEFAULT 0,
+  quality_conversations integer NOT NULL DEFAULT 0,
+  live_calls_with_closers integer NOT NULL DEFAULT 0,
+  closed_sets integer NOT NULL DEFAULT 0,
+  day_rating integer NOT NULL DEFAULT 5,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, report_date)
+);
+```
+RLS: callers can insert/view their own reports, admins can view all.
 
-### 1. Update Setup Instructions
-- Fix the OAuth client type from "Desktop app" to "Web application"
-- Add clear step-by-step instructions with screenshots
-- Include the exact redirect URI needed
-- Add troubleshooting section for common OAuth2 errors
+**2. New page — `src/pages/DailyReport.tsx`**
 
-### 2. Improve Error Handling
-- Add more detailed error messages in the edge function
-- Include specific OAuth2 error codes and solutions
-- Add validation for credential format before attempting API calls
+Form fields:
+- **Dials** — number input (manual)
+- **Sets** — auto-filled from today's scheduled meetings count (read-only)
+- **Quality Conversations** — number input
+- **Live Calls with Closers** — number input
+- **Closed Sets** — number input
+- **Day Rating** — slider or number input (1-10)
+- Submit button
 
-### 3. Add Setup Validation
-- Create a credential validation function that tests OAuth2 setup before saving
-- Provide immediate feedback on credential issues
-- Guide users through fixing common configuration problems
+On submit:
+1. Insert into `daily_reports`
+2. Call `discord-webhook` edge function with a `daily_report` payload type
+3. Show success toast
 
-### 4. Alternative: Switch to App Passwords
-- Offer a simpler alternative using Gmail App Passwords instead of OAuth2
-- This would eliminate the complex OAuth2 setup entirely
-- Users just need to enable 2FA and generate an app password
+**3. Update Discord webhook edge function**
 
-### 5. Enhanced UI Feedback
-- Add real-time validation of credential format
-- Show setup progress indicators
-- Provide copy-paste friendly values for Google Cloud Console
+Add a second payload type `daily_report` alongside the existing `meeting` type. When `daily_report` is received, format the Discord message as:
 
-## Implementation Details
+```
+📊 **CallerName** — End of Day Report
+10 March | Dials - 70 | Sets - 3 | Quality Conversations - 4 | Live Calls with Closers - 0 | Closed Sets - 0 | Day - 4/10
+```
 
-**Step 1**: Update the SmtpEmailSettings component with:
-- Corrected setup instructions (Web application type)
-- Clear redirect URI specification
-- Step-by-step validation
-- Better error messaging
+**4. Add route + sidebar nav**
 
-**Step 2**: Enhance the send-smtp-email edge function with:
-- Detailed OAuth2 error logging
-- Credential format validation
-- Better error response messages
-- Debug mode for troubleshooting
+- New route `/daily-report` in `App.tsx`
+- New sidebar item "Daily Report" with a clipboard/chart icon
 
-**Step 3**: Consider adding App Password alternative:
-- Simpler SMTP authentication using Gmail App Passwords
-- Fallback option for users who struggle with OAuth2
-- Less secure but easier to set up
+### File changes summary
 
-**Step 4**: Add setup wizard:
-- Interactive guide through Google Cloud Console setup
-- Real-time validation of each step
-- Immediate feedback on configuration issues
+| File | Action |
+|------|--------|
+| Migration SQL | Create `daily_reports` table with RLS |
+| `src/pages/DailyReport.tsx` | New page with form |
+| `src/App.tsx` | Add route |
+| `src/components/AppSidebar.tsx` | Add nav item |
+| `supabase/functions/discord-webhook/index.ts` | Handle `daily_report` payload |
+| Deploy discord-webhook | Redeploy edge function |
 
-This plan will resolve the OAuth2 authentication issues by providing clearer setup instructions, better error handling, and potentially a simpler authentication method. The focus is on making the Gmail integration actually work reliably for users.
