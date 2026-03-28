@@ -1,8 +1,6 @@
 import {
   LayoutDashboard,
   Calendar,
-  List,
-  Activity,
   Settings,
   LogOut,
   Phone,
