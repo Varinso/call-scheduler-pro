@@ -38,7 +38,7 @@ export default function Index() {
         <h1 className="text-2xl font-bold tracking-tight">
           Welcome back, {profile?.display_name || "Caller"} 👋
         </h1>
-        <p className="text-muted-foreground mt-1">Schedule your next meeting in seconds.</p>
+        <p className="text-muted-foreground mt-1">​</p>
       </div>
 
       {/* Stats */}
