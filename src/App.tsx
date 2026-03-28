@@ -8,8 +8,6 @@ import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CalendarView from "./pages/CalendarView";
-import MeetingsList from "./pages/MeetingsList";
-import ActivityLogs from "./pages/ActivityLogs";
 import IntegrationSettings from "./pages/IntegrationSettings";
 import DailyReport from "./pages/DailyReport";
 import NotFound from "./pages/NotFound";
@@ -41,8 +39,6 @@ const App = () => (
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute><CalendarView /></ProtectedRoute>} />
-            <Route path="/meetings" element={<ProtectedRoute><MeetingsList /></ProtectedRoute>} />
-            <Route path="/activity" element={<ProtectedRoute><ActivityLogs /></ProtectedRoute>} />
             <Route path="/daily-report" element={<ProtectedRoute><DailyReport /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><IntegrationSettings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
