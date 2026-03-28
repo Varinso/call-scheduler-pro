@@ -3,9 +3,9 @@ import {
   Calendar,
   Settings,
   LogOut,
-  Phone,
   ClipboardCheck,
 } from "lucide-react";
+import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
