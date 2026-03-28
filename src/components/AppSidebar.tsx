@@ -3,9 +3,9 @@ import {
   Calendar,
   Settings,
   LogOut,
-  Phone,
   ClipboardCheck,
 } from "lucide-react";
+import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,7 +45,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="mb-2">
             <div className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-sidebar-primary" />
+              <img src={logo} alt="Rankr" className="h-7 w-7 rounded" />
                {!collapsed && <span className="text-base font-bold tracking-tight">Rankr</span>}
             </div>
           </SidebarGroupLabel>
