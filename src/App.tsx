@@ -8,8 +8,6 @@ import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CalendarView from "./pages/CalendarView";
-import MeetingsList from "./pages/MeetingsList";
-import ActivityLogs from "./pages/ActivityLogs";
 import IntegrationSettings from "./pages/IntegrationSettings";
 import DailyReport from "./pages/DailyReport";
 import NotFound from "./pages/NotFound";
