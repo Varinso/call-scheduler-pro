@@ -46,7 +46,7 @@ export function AppSidebar() {
           <SidebarGroupLabel className="mb-2">
             <div className="flex items-center gap-2">
               <Phone className="h-5 w-5 text-sidebar-primary" />
-              {!collapsed && <span className="text-base font-bold tracking-tight">CallMeet</span>}
+               {!collapsed && <span className="text-base font-bold tracking-tight">Rankr</span>}
             </div>
           </SidebarGroupLabel>
           <SidebarGroupContent>
