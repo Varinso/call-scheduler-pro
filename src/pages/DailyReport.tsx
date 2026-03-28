@@ -13,7 +13,6 @@ export default function DailyReport() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [sets, setSets] = useState(0);
   const [dials, setDials] = useState(0);
   const [qualityConversations, setQualityConversations] = useState(0);
@@ -28,19 +27,6 @@ export default function DailyReport() {
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
-    // Check if already submitted today
-    const checkExisting = async () => {
-      const todayDate = today.toISOString().split("T")[0];
-      const { data } = await supabase
-        .from("daily_reports")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("report_date", todayDate)
-        .maybeSingle();
-      if (data) setAlreadySubmitted(true);
-    };
-
-    // Count today's meetings by this caller
     const countSets = async () => {
       const { count } = await supabase
         .from("meetings")
@@ -51,7 +37,6 @@ export default function DailyReport() {
       setSets(count ?? 0);
     };
 
-    checkExisting();
     countSets();
   }, [user]);
 
@@ -62,43 +47,21 @@ export default function DailyReport() {
     try {
       const todayDate = new Date().toISOString().split("T")[0];
 
-      const { error } = await supabase.from("daily_reports").upsert(
-        {
-          user_id: user.id,
-          report_date: todayDate,
-          dials,
-          sets,
-          quality_conversations: qualityConversations,
-          live_calls_with_closers: liveCallsWithClosers,
-          closed_sets: closedSets,
-          day_rating: dayRating,
-        },
-        { onConflict: "user_id,report_date" }
-      );
-
-      if (error) throw error;
-
-      // Send Discord notification
-      try {
-        await supabase.functions.invoke("discord-webhook", {
-          body: {
-            daily_report: {
-              report_date: todayDate,
-              dials,
-              sets,
-              quality_conversations: qualityConversations,
-              live_calls_with_closers: liveCallsWithClosers,
-              closed_sets: closedSets,
-              day_rating: dayRating,
-            },
+      await supabase.functions.invoke("discord-webhook", {
+        body: {
+          daily_report: {
+            report_date: todayDate,
+            dials,
+            sets,
+            quality_conversations: qualityConversations,
+            live_calls_with_closers: liveCallsWithClosers,
+            closed_sets: closedSets,
+            day_rating: dayRating,
           },
-        });
-      } catch (e) {
-        console.warn("Discord notification failed:", e);
-      }
+        },
+      });
 
-      toast({ title: "Report submitted!", description: "Your daily stats have been saved." });
-      setAlreadySubmitted(true);
+      toast({ title: "Report sent!", description: "Your daily stats have been sent to Discord." });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -151,12 +114,8 @@ export default function DailyReport() {
 
           <Button onClick={handleSubmit} disabled={loading} className="w-full">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {alreadySubmitted ? "Update Report" : "Submit Report"}
+            Send Report
           </Button>
-
-          {alreadySubmitted && (
-            <p className="text-xs text-muted-foreground text-center">You already submitted today. Submitting again will update it.</p>
-          )}
         </CardContent>
       </Card>
     </div>
