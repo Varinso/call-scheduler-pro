@@ -26,8 +26,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 const mainNav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Calendar", url: "/calendar", icon: Calendar },
-  { title: "Meetings", url: "/meetings", icon: List },
-  { title: "Activity", url: "/activity", icon: Activity },
   { title: "Daily Report", url: "/daily-report", icon: ClipboardCheck },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
